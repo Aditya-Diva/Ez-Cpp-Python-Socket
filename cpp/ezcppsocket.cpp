@@ -1,4 +1,4 @@
-#include "pycclient.h"
+#include "ezcppsocket.h"
 
 /**
  * @brief Construct a new Py C Client object
@@ -10,7 +10,7 @@
  * @param debug // Debug flag
  * @param auto_connect // If True, tries to connect directly on object initialization (blocks execution)
  */
-PyCClient::PyCClient(std::string server_address,
+EzCppClient::EzCppClient(std::string server_address,
 					 int server_port,
 					 int socket_family, // AF_INET6
 					 int socket_type,
@@ -45,14 +45,14 @@ PyCClient::PyCClient(std::string server_address,
  * @brief Destroy the Py C Client object
  * 
  */
-PyCClient::~PyCClient(){};
+EzCppClient::~EzCppClient(){};
 
 /**
  * @brief Connect to the socket explicitly
  * Useful if you want to connect at a point much after
  * object initialization
  */
-void PyCClient::establishConnect()
+void EzCppClient::establishConnect()
 {
 	if (connect(this->sock, (struct sockaddr *)&this->serv_addr, sizeof(this->serv_addr)) < 0)
 		printf("\nConnection Failed \n");
@@ -61,13 +61,41 @@ void PyCClient::establishConnect()
 }
 
 // Incoming
+/**
+ * @brief Read bool value received on port
+ * 
+ * @return std::pair<bool, bool> Receive (received_flag, received_bool)
+ */
+std::pair<bool, bool> EzCppClient::readBool()
+{
+	bool ret = true, value = false;
+	try
+	{
+		std::string received = this->readString();
+		if (!received.compare("true") || !received.compare("1")) // If strings match, compare gives 0
+			value = true;
+		else if (!received.compare("false") || !received.compare("0"))
+			;
+		else
+		{
+			ret = false;
+			throw(received);
+		}
+	}
+	catch (std::string message)
+	{
+		printf("\n Message received: %s", message.c_str());
+		printf("\n Unable to collect proper boolean information from message.\n");
+	}
+	return std::pair<bool, bool>(ret, value);
+}
 
 /**
  * @brief Read message received on port
  * 
  * @return std::string  Received buffer
  */
-std::string PyCClient::readString()
+std::string EzCppClient::readString()
 {
 	const int buffer_size = this->readInt();
 	char buffer[buffer_size] = {0};
@@ -90,7 +118,7 @@ std::string PyCClient::readString()
  * @param buffer_size Size of buffer to be read (in bytes)
  * @return int Received integer
  */
-int PyCClient::readInt(const int buffer_size)
+int EzCppClient::readInt(const int buffer_size)
 {
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
@@ -99,11 +127,25 @@ int PyCClient::readInt(const int buffer_size)
 }
 
 /**
+ * @brief Read float value received on port
+ * 
+ * @param buffer_size Size of buffer to be read (in bytes)
+ * @return int Received float
+ */
+float EzCppClient::readFloat(const int buffer_size)
+{
+	char buffer[buffer_size] = {0};
+	int valread = read(sock, buffer, buffer_size);
+	std::ostringstream s(buffer);
+	return std::stof(s.str());
+}
+
+/**
  * @brief Read a list of integer values
  * 
  * @return std::vector<int> Integer List received
  */
-std::vector<int> PyCClient::readIntList()
+std::vector<int> EzCppClient::readIntList()
 {
 	const int buffer_size = this->readInt(); // get message size
 	char buffer[buffer_size] = {0};
@@ -124,6 +166,35 @@ std::vector<int> PyCClient::readIntList()
 }
 
 /**
+ * @brief Read a list of float values
+ * 
+ * @return std::vector<int> Float List received
+ */
+std::vector<float> EzCppClient::readFloatList()
+{
+	const int buffer_size = this->readInt(); // get message size
+	char buffer[buffer_size] = {0};
+	int valread = read(sock, buffer, buffer_size);
+
+	// remove the [] characters around the received list
+	std::string str(buffer);
+	str = str.substr(1, str.find("]") - 1);
+
+	std::stringstream ss(str);
+	std::string ss_elem; // substring
+	std::vector<float> v;
+	while (getline(ss, ss_elem, ' '))
+	{
+		if (ss_elem.compare("") != 0)
+		{
+			v.push_back(std::stof(ss_elem));
+		}
+	}
+	std::cout << "\n";
+	return v;
+}
+
+/**
  * @brief Read an OpenCV Image
  * 
  * @param receive_size_first Bool flag to get image size from other end
@@ -131,7 +202,7 @@ std::vector<int> PyCClient::readIntList()
  * as needed
  * @return cv::Mat Received image 
  */
-cv::Mat PyCClient::readImage()
+cv::Mat EzCppClient::readImage()
 {
 	const int buffer_size = this->readInt();
 	char buffer[buffer_size] = {0};
@@ -154,8 +225,22 @@ cv::Mat PyCClient::readImage()
 }
 
 // Outgoing
+/**
+ * @brief Send bool value
+ * 
+ * @param data Bool value to be sent
+ */
+void EzCppClient::sendBool(bool data)
+{
+	this->sendString(bool(data) ? "true" : "false");
+}
 
-void PyCClient::sendString(std::string msg)
+/**
+ * @brief Send string
+ * 
+ * @param msg String to be sent
+ */
+void EzCppClient::sendString(std::string msg)
 {
 	const int buffer_size = msg.size();
 	this->sendInt(buffer_size);
@@ -167,7 +252,12 @@ void PyCClient::sendString(std::string msg)
 	send(this->sock, msg_ptr, strlen(msg_ptr), 0);
 }
 
-void PyCClient::sendInt(int data)
+/**
+ * @brief Send int
+ * 
+ * @param data Int to be sent
+ */
+void EzCppClient::sendInt(int data)
 {
 	std::string int_str = std::to_string(data);
 	std::string int_message =
@@ -176,12 +266,55 @@ void PyCClient::sendInt(int data)
 }
 
 /**
+ * @brief Send float
+ * 
+ * @param data Float value to be sent
+ */
+void EzCppClient::sendFloat(float data)
+{
+	std::string float_str = std::to_string(data);
+	std::string float_message =
+		std::string(16 - float_str.length(), '0') + float_str;
+	send(this->sock, float_message.c_str(), 16, 0);
+}
+
+/**
+ * @brief Send vector of ints
+ * 
+ * @param data Vector of ints to be sent
+ */
+void EzCppClient::sendIntList(std::vector<int> data)
+{
+	std::string int_list;
+	for (auto val : data)
+	{
+		int_list.append(std::to_string(val) + " ");
+	}
+	this->sendString(int_list);
+}
+
+/**
+ * @brief Send vector of floats
+ * 
+ * @param data Vector of floats to be sent
+ */
+void EzCppClient::sendFloatList(std::vector<float> data)
+{
+	std::string float_list;
+	for (auto val : data)
+	{
+		float_list.append(std::to_string(val) + " ");
+	}
+	this->sendString(float_list);
+}
+
+/**
  * @brief Send Image
  * 
  * @param img Image to be sent
  * @param send_size_first Whether size message should be sent first
  */
-void PyCClient::sendImage(cv::Mat img, bool send_size_first)
+void EzCppClient::sendImage(cv::Mat img, bool send_size_first)
 {
 	int pixel_number = img.rows * img.cols / 2;
 

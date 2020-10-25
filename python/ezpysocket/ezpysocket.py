@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 
-class PyCServer:
+class EzPyServer:
     """[summary] Python - Cpp Communication Server Object
     """
 
@@ -96,11 +96,31 @@ class PyCServer:
 
     # Incoming
 
+    def receive_bool(self) -> bool:
+        """[summary] Receive a bytes array
+
+        Returns:
+            [bool]: [Boolean that was received.]
+        """
+        received = self.receive_string()
+        print("debug:", received)
+        ret = True
+        value = False
+        if received == "true":
+            value = True
+        elif received == "false":
+            pass
+        else:
+            ret = False
+            print(" Message received: ", received)
+            print(" Unable to collect boolean information from message.")
+        return ret, value
+
     def receive_string(self) -> str:
         """[summary] Receive a bytes array
 
         Returns:
-            [bytes]: [Message that was received.]
+            [bytes]: [String that was received.]
         """
         string_length = self.receive_int()
         if self.__debug:
@@ -128,6 +148,43 @@ class PyCServer:
             print("Receiving Buffer data of size (in bytes): ", message_length)
             print('Received {!r} as message'.format(data))
         return data
+
+    def receive_float(self, message_length: int = 16) -> float:
+        """[summary] Receive an float value
+
+        Args:
+            message_length (int, optional): [Size of message to
+            be read in bytes]. Defaults to 16.
+
+        Returns:
+            [float]: [The float value that was received]
+        """
+        data = self.__connection.recv(message_length)  # blocking
+        data = float(data.decode("utf-8"))
+        if self.__debug:
+            print("Receiving Buffer data of size (in bytes): ", message_length)
+            print('Received {!r} as message'.format(data))
+        return data
+
+    def receive_int_list(self):
+        """[summary] Receive a list of int
+
+        Returns:
+            [list]: [List of ints]
+        """
+        received = self.receive_string()
+        print("debug:", received)
+        return list(map(int, received.split()))
+
+    def receive_float_list(self):
+        """[summary] Receive a list of floats
+
+        Returns:
+            [list]: [List of floats]
+        """
+        received = self.receive_string()
+        print("debug:", received)
+        return list(map(float, received.split()))
 
     def receive_image(self, message_length: int = 1024,
                       receive_size_first: bool = True,
@@ -167,6 +224,15 @@ class PyCServer:
 
     # Outgoing
 
+    def send_bool(self, data: bool):
+        """[summary] Send a boolean value
+        Note: Sending String values is discouraged.
+        Args:
+            data (bool): [Any one of (True, False, 0, 1)]
+        """
+        print("sending bool ...", data)
+        self.send_string(str(data).lower())
+
     def send_string(self, data: str):
         """[summary] Send a string value
 
@@ -186,11 +252,33 @@ class PyCServer:
             print("Sending int ... : ", bytes(format(data, '016d'), 'utf-8'))
         self.__connection.sendall(bytes(format(data, '016d'), 'utf-8'))
 
+    def send_float(self, data: float):
+        """[summary] Send an float value
+
+        Args:
+            data (float): [Float to be sent]
+        """
+        if self.__debug:
+            print("Sending float ... : ", bytes(format(data, '016f'), 'utf-8'))
+        self.__connection.sendall(bytes(format(data, '016f'), 'utf-8'))
+
     def send_int_list(self, data: list):
         """[summary] Send a list of values
 
         Args:
             data (list): [List of values(integers) to be sent]
+        """
+        if self.__debug:
+            print("Sending list...", data)
+        self.send_int(len(str(data)))  # send size of list
+        # usually (bytes size -3 ) for character "b" and 2 "'"
+        self.__connection.sendall(bytes(str(data), 'utf-8'))
+
+    def send_float_list(self, data: list):
+        """[summary] Send a list of values
+
+        Args:
+            data (list): [List of values(floats) to be sent]
         """
         if self.__debug:
             print("Sending list...", data)
