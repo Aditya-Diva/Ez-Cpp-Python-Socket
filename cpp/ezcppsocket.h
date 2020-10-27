@@ -34,10 +34,11 @@ public:
 			  int server_port = 10000,
 			  int socket_family = AF_INET, // AF_INET6
 			  int socket_type = SOCK_STREAM,
-			  bool debug = false,
+			  bool debug = true,
 			  bool auto_connect = true);
 	~EzCppClient();
 	void establishConnect();
+	void Disconnect();
 
 	// Incoming
 

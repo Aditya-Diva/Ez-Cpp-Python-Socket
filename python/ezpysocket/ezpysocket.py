@@ -9,7 +9,7 @@ class EzPyServer:
 
     def __init__(self, server_address: str = "127.0.0.1",
                  server_port: int = 10000, socket_family=socket.AF_INET,
-                 socket_type=socket.SOCK_STREAM, debug: bool = False,
+                 socket_type=socket.SOCK_STREAM, debug: bool = True,
                  auto_connect: bool = True):
         """[summary]
 
@@ -174,7 +174,7 @@ class EzPyServer:
         """
         received = self.receive_string()
         print("debug:", received)
-        return list(map(int, received.split()))
+        return eval(received)
 
     def receive_float_list(self):
         """[summary] Receive a list of floats
@@ -184,7 +184,7 @@ class EzPyServer:
         """
         received = self.receive_string()
         print("debug:", received)
-        return list(map(float, received.split()))
+        return eval(received)
 
     def receive_image(self, message_length: int = 1024,
                       receive_size_first: bool = True,

@@ -61,6 +61,9 @@ if __name__ == "__main__":
 
     # Send a float list
     a = np.arange(0, 10, 0.25)
-    s.send_float_list(a)
+    b = [i for i in a]
+    s.send_float_list(b)
 
     s.send_image(img)
+
+    s.disconnect()

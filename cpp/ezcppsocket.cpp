@@ -60,6 +60,15 @@ void EzCppClient::establishConnect()
 		printf("\n Socket connection successful \n");
 }
 
+/**
+ * @brief Close the connection
+ * 
+ */
+void EzCppClient::Disconnect()
+{
+	close(sock);
+}
+
 // Incoming
 /**
  * @brief Read bool value received on port
@@ -122,8 +131,12 @@ int EzCppClient::readInt(const int buffer_size)
 {
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
+
+	if (this->debug)
+		printf("readInt buffer received: %s\n", buffer);
+
 	std::ostringstream s(buffer);
-	return std::stoi(s.str());
+	return std::stoi(s.str().substr(0,buffer_size));
 }
 
 /**
@@ -136,6 +149,10 @@ float EzCppClient::readFloat(const int buffer_size)
 {
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
+
+	if (this->debug)
+		printf("readFloat buffer received: %s\n", buffer);
+
 	std::ostringstream s(buffer);
 	return std::stof(s.str());
 }
@@ -150,6 +167,9 @@ std::vector<int> EzCppClient::readIntList()
 	const int buffer_size = this->readInt(); // get message size
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
+
+	if (this->debug)
+		printf("readIntList buffer received: %s\n", buffer);
 
 	// remove the [] characters around the received list
 	std::string str(buffer);
@@ -176,6 +196,9 @@ std::vector<float> EzCppClient::readFloatList()
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
 
+	if (this->debug)
+		printf("readFloatList buffer received: %s\n", buffer);
+
 	// remove the [] characters around the received list
 	std::string str(buffer);
 	str = str.substr(1, str.find("]") - 1);
@@ -183,14 +206,10 @@ std::vector<float> EzCppClient::readFloatList()
 	std::stringstream ss(str);
 	std::string ss_elem; // substring
 	std::vector<float> v;
-	while (getline(ss, ss_elem, ' '))
+	while (getline(ss, ss_elem, ','))
 	{
-		if (ss_elem.compare("") != 0)
-		{
-			v.push_back(std::stof(ss_elem));
-		}
+		v.push_back(std::stof(ss_elem));
 	}
-	std::cout << "\n";
 	return v;
 }
 
@@ -286,10 +305,14 @@ void EzCppClient::sendFloat(float data)
 void EzCppClient::sendIntList(std::vector<int> data)
 {
 	std::string int_list;
+	int_list += "[";
 	for (auto val : data)
 	{
-		int_list.append(std::to_string(val) + " ");
+		int_list.append(std::to_string(val) + ",");
 	}
+	// remove the extra comma and add a closing bracket
+	int_list.substr(0,int_list.length()-2);
+	int_list += "]";
 	this->sendString(int_list);
 }
 
@@ -301,10 +324,14 @@ void EzCppClient::sendIntList(std::vector<int> data)
 void EzCppClient::sendFloatList(std::vector<float> data)
 {
 	std::string float_list;
+	float_list += "[";
 	for (auto val : data)
 	{
-		float_list.append(std::to_string(val) + " ");
+		float_list.append(std::to_string(val) + ",");
 	}
+	// remove the extra comma and add a closing bracket
+	float_list.substr(0,float_list.length()-2);
+	float_list += "]";
 	this->sendString(float_list);
 }
 

@@ -67,5 +67,7 @@ int main(int argc, char const *argv[])
 	std::cout << "Press a key to exit demo\n";
 	cv::waitKey(0);
 
+	c.Disconnect();
+
 	return 0;
 }
