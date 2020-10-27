@@ -35,9 +35,9 @@ if __name__ == "__main__":
 
     img = s.receive_image()
     print("Showing image...")
-    cv2.imshow("Python Received image", img)
+    cv2.imshow("Python Server Received image", img)
     cv2.waitKey(0)
-    print("Press a key to start sending from Python to Cpp...")
+    print("Press a key to start sending from Python server to Python client...")
 
 
 # Send examples

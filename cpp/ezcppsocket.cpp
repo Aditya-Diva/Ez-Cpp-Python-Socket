@@ -15,7 +15,8 @@ EzCppClient::EzCppClient(std::string server_address,
 					 int socket_family, // AF_INET6
 					 int socket_type,
 					 bool debug,
-					 bool auto_connect)
+					 bool auto_connect,
+					 bool server_mode)
 {
 	// Dump values in class
 	this->server_address = server_address;
@@ -23,11 +24,6 @@ EzCppClient::EzCppClient(std::string server_address,
 	this->socket_family = socket_family;
 	this->socket_type = socket_type;
 	this->debug = debug;
-
-	if ((sock = socket(this->socket_family, this->socket_type, 0)) < 0)
-		printf("Socket creation error\n");
-	else
-		printf("Socket creation successful\n");
 
 	this->serv_addr.sin_family = this->socket_family;
 	this->serv_addr.sin_port = htons(this->server_port);
@@ -38,7 +34,62 @@ EzCppClient::EzCppClient(std::string server_address,
 
 	if (auto_connect)
 	{
-		this->establishConnect();
+		printf("Starting ");
+		printf((server_mode?"Server":"Client"));
+		printf("...\n");
+
+		printf("Starting up on %s port %s\n", this->server_address.c_str(), std::to_string(this->server_port).c_str());
+		if (server_mode){
+			int opt = 1;
+			int addrlen = sizeof(this->serv_addr); 
+			int server_fd;
+			
+			// Creating socket file descriptor 
+			if ((server_fd = socket(this->socket_family, this->socket_type, 0)) == 0) 
+			{ 
+				perror("Socket creation failed"); 
+				exit(EXIT_FAILURE); 
+			} 
+			else printf("Socket creation successful\n");
+
+			// Forcefully attaching socket to the port 
+			if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, 
+														&opt, sizeof(opt))) 
+			{ 
+				perror("setsockopt"); 
+				exit(EXIT_FAILURE); 
+			} 
+			this->serv_addr.sin_addr.s_addr = INADDR_ANY; 
+			
+			// Forcefully attaching socket to the port 8080 
+			if (bind(server_fd, (struct sockaddr *)&this->serv_addr,  
+										sizeof(this->serv_addr))<0) 
+			{ 
+				perror("bind failed"); 
+				exit(EXIT_FAILURE); 
+			} 
+			if (listen(server_fd, 1) < 0) // queue of pending connections -> 1
+			{ 
+				perror("listen"); 
+				exit(EXIT_FAILURE); 
+			} 
+
+			printf("Waiting for a connection ...\n");
+			if ((sock = accept(server_fd, (struct sockaddr *)&this->serv_addr,  
+							(socklen_t*)&addrlen))<0) 
+			{ 
+				perror("accept"); 
+				exit(EXIT_FAILURE); 
+			} 
+			printf("Connection established ...\n");
+		}
+		else{
+			if ((sock = socket(this->socket_family, this->socket_type, 0)) < 0)
+				printf("Socket creation error\n");
+			else
+				printf("Socket creation successful\n");
+			this->establishConnect();
+		}
 	}
 }
 /**

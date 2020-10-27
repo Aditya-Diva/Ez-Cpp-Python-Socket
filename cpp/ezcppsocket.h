@@ -34,8 +34,9 @@ public:
 			  int server_port = 10000,
 			  int socket_family = AF_INET, // AF_INET6
 			  int socket_type = SOCK_STREAM,
-			  bool debug = true,
-			  bool auto_connect = true);
+			  bool debug = false,
+			  bool auto_connect = true,
+			  bool server_mode = false);
 	~EzCppClient();
 	void establishConnect();
 	void Disconnect();

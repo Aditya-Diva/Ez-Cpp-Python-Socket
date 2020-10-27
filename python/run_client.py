@@ -5,40 +5,10 @@ import numpy as np
 if __name__ == "__main__":
 
     # Init
-    s = ps.EzPySocket(debug=True)
+    s = ps.EzPySocket(debug=True, server_mode=False)
 
     # Load image
     img = cv2.imread("lena.jpg", 1)
-
-# Receive examples
-    print("Receiving data...")
-
-    print("Bool 1 : ", s.receive_bool())
-    print("Bool 2 : ", s.receive_bool())
-    print("Bool 3 : ", s.receive_bool())
-    print("Bool 4 : ", s.receive_bool())
-
-    data = s.receive_string()
-    print("String : ", data)
-
-    data = s.receive_int()
-    print("Int : ", data)
-
-    data = s.receive_float()
-    print("Float : ", data)
-
-    data = s.receive_int_list()
-    print("Int List : ", data)
-
-    data = s.receive_float_list()
-    print("Float List : ", data)
-
-    img = s.receive_image()
-    print("Showing image...")
-    cv2.imshow("Python Received image", img)
-    cv2.waitKey(0)
-    print("Press a key to start sending from Python to Cpp...")
-
 
 # Send examples
     print("Sending data...")
@@ -65,5 +35,34 @@ if __name__ == "__main__":
     s.send_float_list(b)
 
     s.send_image(img)
+
+# Receive examples
+    print("Receiving data...")
+
+    print("Bool 1 : ", s.receive_bool())
+    print("Bool 2 : ", s.receive_bool())
+    print("Bool 3 : ", s.receive_bool())
+    print("Bool 4 : ", s.receive_bool())
+
+    data = s.receive_string()
+    print("String : ", data)
+
+    data = s.receive_int()
+    print("Int : ", data)
+
+    data = s.receive_float()
+    print("Float : ", data)
+
+    data = s.receive_int_list()
+    print("Int List : ", data)
+
+    data = s.receive_float_list()
+    print("Float List : ", data)
+
+    img = s.receive_image()
+    print("Showing image...")
+    cv2.imshow("Python Client Received image", img)
+    print("Press a key on img to exit demo")
+    cv2.waitKey(0)
 
     s.disconnect()

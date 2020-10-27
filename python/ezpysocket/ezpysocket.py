@@ -3,14 +3,16 @@ import cv2
 import numpy as np
 
 
-class EzPyServer:
+class EzPySocket:
     """[summary] Python - Cpp Communication Server Object
     """
 
     def __init__(self, server_address: str = "127.0.0.1",
                  server_port: int = 10000, socket_family=socket.AF_INET,
-                 socket_type=socket.SOCK_STREAM, debug: bool = True,
-                 auto_connect: bool = True):
+                 socket_type=socket.SOCK_STREAM, debug: bool = False,
+                 auto_connect: bool = True,
+                 client_connection_count: int = 1,
+                 server_mode: bool = True):
         """[summary]
 
         Args:
@@ -40,22 +42,29 @@ class EzPyServer:
 
         self.__socket_type = socket_type
 
-        self.create_socket()
+        self.create_socket() 
 
         # Bind sever socket to specific address and port
         self.__server_address = (server_address, server_port)
 
         if self.__debug:
-            print('starting up on {} port {}'.format(*self.__server_address))
-        self.__sock.bind(self.__server_address)
+                print("Starting " + ("server" if server_mode else "client"))
+                print('Starting up on {} port {}'.format(*self.__server_address))
 
-        self.__connection_count = 1  # number of client connection(s) to accept
+        if server_mode:
+            self.__sock.bind(self.__server_address)
 
-        # Listen for incoming connection(s) from clients
-        self.__sock.listen(self.__connection_count)
+            # number of client connection(s) to accept
+            self.__connection_count = client_connection_count
 
-        if auto_connect:
-            self.connect()
+            # Listen for incoming connection(s) from clients
+            self.__sock.listen(self.__connection_count)
+
+            if auto_connect:
+                self.connect()
+        else:
+            self.__sock.connect(self.__server_address)
+            self.__connection = self.__sock
 
     def create_socket(self):
         """[summary]
@@ -143,6 +152,7 @@ class EzPyServer:
             [int]: [The integer value that was received]
         """
         data = self.__connection.recv(message_length)  # blocking
+        print("data received : ", repr(data))
         data = int(data.decode("utf-8"))
         if self.__debug:
             print("Receiving Buffer data of size (in bytes): ", message_length)
@@ -230,6 +240,8 @@ class EzPyServer:
         Args:
             data (bool): [Any one of (True, False, 0, 1)]
         """
+        if data in [1,0]:
+            data = bool(data)
         print("sending bool ...", data)
         self.send_string(str(data).lower())
 
