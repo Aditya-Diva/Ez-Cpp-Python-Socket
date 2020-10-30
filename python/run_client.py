@@ -5,7 +5,7 @@ import numpy as np
 if __name__ == "__main__":
 
     # Init
-    s = ps.EzPySocket(debug=True, server_mode=False)
+    s = ps.EzPySocket(server_mode=False)
 
     # Load image
     img = cv2.imread("lena.jpg", 1)

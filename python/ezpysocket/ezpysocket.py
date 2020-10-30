@@ -1,7 +1,7 @@
 import socket
 import cv2
 import numpy as np
-
+import time
 
 class EzPySocket:
     """[summary] Python - Cpp Communication Server Object
@@ -52,7 +52,18 @@ class EzPySocket:
                 print('Starting up on {} port {}'.format(*self.__server_address))
 
         if server_mode:
-            self.__sock.bind(self.__server_address)
+            address_free_flag = False
+            while not address_free_flag:
+                try:
+                    self.__sock.bind(self.__server_address)
+                    address_free_flag = True
+                except OSError as oserr:
+                    print(oserr, "\nTry to reconnect in 50 seconds")
+                    exit()
+                    # time.sleep(10)    // TODO: Timeout and check again 
+                except Exception as e:
+                    print(e)
+                    
 
             # number of client connection(s) to accept
             self.__connection_count = client_connection_count
@@ -63,7 +74,11 @@ class EzPySocket:
             if auto_connect:
                 self.connect()
         else:
-            self.__sock.connect(self.__server_address)
+            # sock.settimeout(5)   # 5 seconds timeout feature # TODO
+            try:
+                self.__sock.connect(self.__server_address)
+            except socket.gaierror as err:
+                print("Socket connection failed : ", err)
             self.__connection = self.__sock
 
     def create_socket(self):
@@ -112,7 +127,8 @@ class EzPySocket:
             [bool]: [Boolean that was received.]
         """
         received = self.receive_string()
-        print("debug:", received)
+        if self.__debug:
+            print("Bool String Received:", received)
         ret = True
         value = False
         if received == "true":
@@ -152,7 +168,8 @@ class EzPySocket:
             [int]: [The integer value that was received]
         """
         data = self.__connection.recv(message_length)  # blocking
-        print("data received : ", repr(data))
+        if self.__debug:
+            print("data received : ", repr(data))
         data = int(data.decode("utf-8"))
         if self.__debug:
             print("Receiving Buffer data of size (in bytes): ", message_length)
@@ -183,7 +200,6 @@ class EzPySocket:
             [list]: [List of ints]
         """
         received = self.receive_string()
-        print("debug:", received)
         return eval(received)
 
     def receive_float_list(self):
@@ -193,7 +209,6 @@ class EzPySocket:
             [list]: [List of floats]
         """
         received = self.receive_string()
-        print("debug:", received)
         return eval(received)
 
     def receive_image(self, message_length: int = 1024,

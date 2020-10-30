@@ -1,11 +1,11 @@
 # Ez-Cpp-Python-Socket
 > Creating tools to enable cpp python socket communication. 
 
-> This is source of developed library that attempts to simplify TCP/IP socket communication. Here, the server is setup on Python and C++/Cpp acts as the client.
+> This is source of developed library that attempts to simplify TCP/IP socket communication.
 
 Types of messages that can be sent to and fro are as shown below:
 ```
-Type       CPP    Python            Extra Info
+Type       Cpp    Python            Extra Info
 ==========================================================
 bool        Y       Y
 string      Y       Y
@@ -17,17 +17,25 @@ image       Y       Y
 ```
 
 ## Installation
-Preferably use virtual environments.
+Preferably use dockers or virtual environments.
 
-Linux:
+### Linux:
 Python Dependencies
 ```
-pip3 install -r python/requirements.txt
+./install_dep.sh
 ```
 C++ Dependencies : Install [OpenCV](https://github.com/opencv/opencv)
 
 
 ## Demo
+
+### Docker
+```
+./build_docker.sh # builds docker image as required.
+./run_docker.sh # takes you directly to demo
+```
+
+### Local Installation / VirtualEnv
 Assuming that OpenCV has already been installed and accessible by C++.
 Run shell script to download python dependencies and run demo.
 To run demo of server and client together,
@@ -37,12 +45,12 @@ To run demo of server and client together,
 
 ## Usage Example
 To inspect usage of commands,
-Refer to run.py in [python](python) folder & main.py in [cpp](cpp) folder.
+Refer to run_server and run_client scripts in [python](python) & [cpp](cpp) folders.
 
 ## Meta
 
 Aditya Divakaran - [@LinkedIn](https://www.linkedin.com/in/aditya-divakaran/) - [@Github](https://github.com/Aditya-Diva) - [@GMail](adi.develops@gmail.com)
 
 Note:
-- This was developed on Ubuntu 20.04 in a virtual environment. 
+- This was tested on Ubuntu 20.04 in a virtual environment and on docker. 
 - This is a fun project that was picked up while understanding socket communication for other projects that I'm tinkering with.

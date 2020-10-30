@@ -5,7 +5,7 @@ import numpy as np
 if __name__ == "__main__":
 
     # Init
-    s = ps.EzPySocket(debug=True)
+    s = ps.EzPySocket()
 
     # Load image
     img = cv2.imread("lena.jpg", 1)
@@ -36,8 +36,8 @@ if __name__ == "__main__":
     img = s.receive_image()
     print("Showing image...")
     cv2.imshow("Python Server Received image", img)
-    cv2.waitKey(0)
     print("Press a key to start sending from Python server to Python client...")
+    cv2.waitKey(0)
 
 
 # Send examples

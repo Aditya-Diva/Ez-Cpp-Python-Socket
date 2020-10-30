@@ -10,7 +10,7 @@
  * @param debug // Debug flag
  * @param auto_connect // If True, tries to connect directly on object initialization (blocks execution)
  */
-EzCppClient::EzCppClient(std::string server_address,
+EzCppSocket::EzCppSocket(std::string server_address,
 					 int server_port,
 					 int socket_family, // AF_INET6
 					 int socket_type,
@@ -61,13 +61,22 @@ EzCppClient::EzCppClient(std::string server_address,
 			} 
 			this->serv_addr.sin_addr.s_addr = INADDR_ANY; 
 			
-			// Forcefully attaching socket to the port 8080 
-			if (bind(server_fd, (struct sockaddr *)&this->serv_addr,  
-										sizeof(this->serv_addr))<0) 
-			{ 
-				perror("bind failed"); 
-				exit(EXIT_FAILURE); 
-			} 
+			bool address_free_flag = false;
+			while (!address_free_flag) // TODO: Timeout and check again 
+			{
+				// Forcefully attaching socket to the specified port 
+				if (bind(server_fd, (struct sockaddr *)&this->serv_addr,  
+											sizeof(this->serv_addr))<0) 
+				{ 
+					perror("bind failed"); 
+					// printf("Trying again in 10 seconds\n");
+					// sleep(10);
+					exit(EXIT_FAILURE); 
+				} 
+				else
+					address_free_flag = true;
+			}
+			
 			if (listen(server_fd, 1) < 0) // queue of pending connections -> 1
 			{ 
 				perror("listen"); 
@@ -81,6 +90,8 @@ EzCppClient::EzCppClient(std::string server_address,
 				perror("accept"); 
 				exit(EXIT_FAILURE); 
 			} 
+			if (this->socket_family == AF_INET) // TODO: Check for IPV6 as well
+				printf("Connected IP address: %s:%d\n", inet_ntoa(this->serv_addr.sin_addr), htons(this->serv_addr.sin_port));
 			printf("Connection established ...\n");
 		}
 		else{
@@ -96,14 +107,14 @@ EzCppClient::EzCppClient(std::string server_address,
  * @brief Destroy the Py C Client object
  * 
  */
-EzCppClient::~EzCppClient(){};
+EzCppSocket::~EzCppSocket(){};
 
 /**
  * @brief Connect to the socket explicitly
  * Useful if you want to connect at a point much after
  * object initialization
  */
-void EzCppClient::establishConnect()
+void EzCppSocket::establishConnect()
 {
 	if (connect(this->sock, (struct sockaddr *)&this->serv_addr, sizeof(this->serv_addr)) < 0)
 		printf("\nConnection Failed \n");
@@ -115,7 +126,7 @@ void EzCppClient::establishConnect()
  * @brief Close the connection
  * 
  */
-void EzCppClient::Disconnect()
+void EzCppSocket::Disconnect()
 {
 	close(sock);
 }
@@ -126,7 +137,7 @@ void EzCppClient::Disconnect()
  * 
  * @return std::pair<bool, bool> Receive (received_flag, received_bool)
  */
-std::pair<bool, bool> EzCppClient::readBool()
+std::pair<bool, bool> EzCppSocket::readBool()
 {
 	bool ret = true, value = false;
 	try
@@ -155,7 +166,7 @@ std::pair<bool, bool> EzCppClient::readBool()
  * 
  * @return std::string  Received buffer
  */
-std::string EzCppClient::readString()
+std::string EzCppSocket::readString()
 {
 	const int buffer_size = this->readInt();
 	char buffer[buffer_size] = {0};
@@ -178,7 +189,7 @@ std::string EzCppClient::readString()
  * @param buffer_size Size of buffer to be read (in bytes)
  * @return int Received integer
  */
-int EzCppClient::readInt(const int buffer_size)
+int EzCppSocket::readInt(const int buffer_size)
 {
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
@@ -196,7 +207,7 @@ int EzCppClient::readInt(const int buffer_size)
  * @param buffer_size Size of buffer to be read (in bytes)
  * @return int Received float
  */
-float EzCppClient::readFloat(const int buffer_size)
+float EzCppSocket::readFloat(const int buffer_size)
 {
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
@@ -213,7 +224,7 @@ float EzCppClient::readFloat(const int buffer_size)
  * 
  * @return std::vector<int> Integer List received
  */
-std::vector<int> EzCppClient::readIntList()
+std::vector<int> EzCppSocket::readIntList()
 {
 	const int buffer_size = this->readInt(); // get message size
 	char buffer[buffer_size] = {0};
@@ -241,7 +252,7 @@ std::vector<int> EzCppClient::readIntList()
  * 
  * @return std::vector<int> Float List received
  */
-std::vector<float> EzCppClient::readFloatList()
+std::vector<float> EzCppSocket::readFloatList()
 {
 	const int buffer_size = this->readInt(); // get message size
 	char buffer[buffer_size] = {0};
@@ -272,7 +283,7 @@ std::vector<float> EzCppClient::readFloatList()
  * as needed
  * @return cv::Mat Received image 
  */
-cv::Mat EzCppClient::readImage()
+cv::Mat EzCppSocket::readImage()
 {
 	const int buffer_size = this->readInt();
 	char buffer[buffer_size] = {0};
@@ -300,7 +311,7 @@ cv::Mat EzCppClient::readImage()
  * 
  * @param data Bool value to be sent
  */
-void EzCppClient::sendBool(bool data)
+void EzCppSocket::sendBool(bool data)
 {
 	this->sendString(bool(data) ? "true" : "false");
 }
@@ -310,7 +321,7 @@ void EzCppClient::sendBool(bool data)
  * 
  * @param msg String to be sent
  */
-void EzCppClient::sendString(std::string msg)
+void EzCppSocket::sendString(std::string msg)
 {
 	const int buffer_size = msg.size();
 	this->sendInt(buffer_size);
@@ -327,7 +338,7 @@ void EzCppClient::sendString(std::string msg)
  * 
  * @param data Int to be sent
  */
-void EzCppClient::sendInt(int data)
+void EzCppSocket::sendInt(int data)
 {
 	std::string int_str = std::to_string(data);
 	std::string int_message =
@@ -340,7 +351,7 @@ void EzCppClient::sendInt(int data)
  * 
  * @param data Float value to be sent
  */
-void EzCppClient::sendFloat(float data)
+void EzCppSocket::sendFloat(float data)
 {
 	std::string float_str = std::to_string(data);
 	std::string float_message =
@@ -353,7 +364,7 @@ void EzCppClient::sendFloat(float data)
  * 
  * @param data Vector of ints to be sent
  */
-void EzCppClient::sendIntList(std::vector<int> data)
+void EzCppSocket::sendIntList(std::vector<int> data)
 {
 	std::string int_list;
 	int_list += "[";
@@ -372,7 +383,7 @@ void EzCppClient::sendIntList(std::vector<int> data)
  * 
  * @param data Vector of floats to be sent
  */
-void EzCppClient::sendFloatList(std::vector<float> data)
+void EzCppSocket::sendFloatList(std::vector<float> data)
 {
 	std::string float_list;
 	float_list += "[";
@@ -392,7 +403,7 @@ void EzCppClient::sendFloatList(std::vector<float> data)
  * @param img Image to be sent
  * @param send_size_first Whether size message should be sent first
  */
-void EzCppClient::sendImage(cv::Mat img, bool send_size_first)
+void EzCppSocket::sendImage(cv::Mat img, bool send_size_first)
 {
 	int pixel_number = img.rows * img.cols / 2;
 

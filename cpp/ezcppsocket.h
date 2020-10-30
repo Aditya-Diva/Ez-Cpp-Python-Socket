@@ -9,6 +9,13 @@
 #include <unistd.h>
 #include <string.h>
 
+// To add sleep when checking server address available
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
+
 #include <sstream>
 #include <vector>
 
@@ -18,7 +25,7 @@
  * @brief Python - Cpp Communication Server Object
  * 
  */
-class EzCppClient
+class EzCppSocket
 {
 private:
 	int sock;					  // Socket point
@@ -30,14 +37,14 @@ private:
 	struct sockaddr_in serv_addr; // Address struct
 
 public:
-	EzCppClient(std::string server_address = "127.0.0.1",
+	EzCppSocket(std::string server_address = "127.0.0.1",
 			  int server_port = 10000,
 			  int socket_family = AF_INET, // AF_INET6
 			  int socket_type = SOCK_STREAM,
 			  bool debug = false,
 			  bool auto_connect = true,
 			  bool server_mode = false);
-	~EzCppClient();
+	~EzCppSocket();
 	void establishConnect();
 	void Disconnect();
 
