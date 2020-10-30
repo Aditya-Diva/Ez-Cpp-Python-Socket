@@ -40,7 +40,7 @@ Assuming that OpenCV has already been installed and accessible by C++.
 Run shell script to download python dependencies and run demo.
 To run demo of server and client together,
 ```
-./run.sh
+./run_examples.sh
 ```
 
 ## Usage Example
