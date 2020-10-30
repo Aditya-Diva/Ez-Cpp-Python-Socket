@@ -15,6 +15,14 @@ list<int>   Y       Y   vector<int>     <->     list
 list<float> Y       Y   vector<float>   <->     list
 image       Y       Y
 ```
+The following configurations are supported:
+```
+  Server  Client
+1. Cpp     Cpp  
+2. Cpp     Py   
+3. Py      Cpp  
+4. Py      Py   
+```
 
 ## Installation
 Preferably use dockers or virtual environments.
