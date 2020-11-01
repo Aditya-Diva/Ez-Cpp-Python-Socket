@@ -28,22 +28,32 @@
 class EzCppSocket
 {
 private:
-	int sock;					  // Socket point
-	std::string server_address;	  // Server address
-	int server_port;			  // Port number
-	int socket_family;			  // IPV4/IPV6
-	int socket_type;			  // TCP/UDP
-	bool debug;					  // Debug flag
-	struct sockaddr_in serv_addr; // Address struct
+	int sock;									// Socket point
+	std::string server_address;					// Server address
+	int server_port;							// Port number
+	int socket_family;							// IPV4/IPV6
+	int socket_type;							// TCP/UDP
+	bool debug;									// Debug flag
+	struct sockaddr_in serv_addr;				// Address struct
+	int client_connection_count;				// No. of client connections our server should accept
+	unsigned int reconnect_on_address_busy;		// No. of useconds timeout before polling again in case of errors raised
+	std::pair<std::string, std::string> tokens; // Pair of tokens (start_token, end_token)
+
+	void insertTokens(std::string &msg);
+	void extractTokens(std::string &msg);
+	void pollingTimeout();
 
 public:
 	EzCppSocket(std::string server_address = "127.0.0.1",
-			  int server_port = 10000,
-			  int socket_family = AF_INET, // AF_INET6
-			  int socket_type = SOCK_STREAM,
-			  bool debug = false,
-			  bool auto_connect = true,
-			  bool server_mode = false);
+				int server_port = 10000,
+				int socket_family = AF_INET, // AF_INET6
+				int socket_type = SOCK_STREAM,
+				bool debug = false,
+				bool auto_connect = true,
+				int client_connection_count = 1,
+				bool server_mode = true,
+				unsigned int reconnect_on_address_busy = 0,
+				std::pair<std::string, std::string> tokens = std::pair<std::string, std::string>("", ""));
 	~EzCppSocket();
 	void establishConnect();
 	void Disconnect();
@@ -66,7 +76,7 @@ public:
 	void sendFloat(float data);
 	void sendIntList(std::vector<int> data);
 	void sendFloatList(std::vector<float> data);
-	void sendImage(cv::Mat img, bool send_size_first = true);
+	void sendImage(cv::Mat img);
 };
 
 #endif

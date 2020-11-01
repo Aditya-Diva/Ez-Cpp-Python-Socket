@@ -1,7 +1,5 @@
 # Ez-Cpp-Python-Socket
-> Creating tools to enable cpp python socket communication. 
-
-> This is source of developed library that attempts to simplify TCP/IP socket communication.
+> Cpp Python socket abstraction library that attempts to simplify TCP/IP socket communication.
 
 Types of messages that can be sent to and fro are as shown below:
 ```
@@ -24,6 +22,16 @@ The following configurations are supported:
 4. Py      Py   
 ```
 
+Configurable Functionalities include:
+- Polling in case address is busy
+- Start and end tokens for every message passed
+
+Note: There is a limitation to the size of image that can be sent. It's a work in progress. : )
+
+### Sample Images
+![Sample1](imgs/sample1.png)
+![Sample2](imgs/sample2.png)
+
 ## Installation
 Preferably use dockers or virtual environments.
 
@@ -39,8 +47,11 @@ C++ Dependencies : Install [OpenCV](https://github.com/opencv/opencv)
 
 ### Docker
 ```
-./build_docker.sh # builds docker image as required.
-./run_docker.sh # takes you directly to demo
+./build_docker.sh # build docker image in demo or dev mode
+./run_docker.sh # runs docker in mode selected
+
+# To remove the docker image after playing around
+./remove_docker.sh # removes docker image from system
 ```
 
 ### Local Installation / VirtualEnv
@@ -50,10 +61,14 @@ To run demo of server and client together,
 ```
 ./run_examples.sh
 ```
+To test out demo of example functionalities
+```
+./test_functionalities/test_<name of functionality>.sh
+```
 
 ## Usage Example
 To inspect usage of commands,
-Refer to run_server and run_client scripts in [python](python) & [cpp](cpp) folders.
+Refer to run_server and run_client scripts in [python](python) & [cpp](cpp) folders. For additional functionalities check out the examples folders in each folder.
 
 ## Meta
 

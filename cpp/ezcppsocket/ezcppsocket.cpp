@@ -9,14 +9,21 @@
  * @param socket_type // TCP/UDP
  * @param debug // Debug flag
  * @param auto_connect // If True, tries to connect directly on object initialization (blocks execution)
+ * @param client_connection_count // How many clients to permit for connection
+ * @param server_mode // If true, acts as server, else client
+ * @param reconnect_on_address_busy // Pass a timeout in useconds before reconnecting
+ * @param tokens // A start and end token to ensure proper delivery of message
  */
 EzCppSocket::EzCppSocket(std::string server_address,
-					 int server_port,
-					 int socket_family, // AF_INET6
-					 int socket_type,
-					 bool debug,
-					 bool auto_connect,
-					 bool server_mode)
+						 int server_port,
+						 int socket_family, // AF_INET6
+						 int socket_type,
+						 bool debug,
+						 bool auto_connect,
+						 int client_connection_count,
+						 bool server_mode,
+						 unsigned int reconnect_on_address_busy,
+						 std::pair<std::string, std::string> tokens)
 {
 	// Dump values in class
 	this->server_address = server_address;
@@ -24,6 +31,8 @@ EzCppSocket::EzCppSocket(std::string server_address,
 	this->socket_family = socket_family;
 	this->socket_type = socket_type;
 	this->debug = debug;
+	this->reconnect_on_address_busy = reconnect_on_address_busy;
+	this->tokens = tokens;
 
 	this->serv_addr.sin_family = this->socket_family;
 	this->serv_addr.sin_port = htons(this->server_port);
@@ -35,66 +44,67 @@ EzCppSocket::EzCppSocket(std::string server_address,
 	if (auto_connect)
 	{
 		printf("Starting ");
-		printf((server_mode?"Server":"Client"));
+		printf((server_mode ? "Server" : "Client"));
 		printf("...\n");
 
 		printf("Starting up on %s port %s\n", this->server_address.c_str(), std::to_string(this->server_port).c_str());
-		if (server_mode){
+		if (server_mode)
+		{
 			int opt = 1;
-			int addrlen = sizeof(this->serv_addr); 
+			int addrlen = sizeof(this->serv_addr);
 			int server_fd;
-			
-			// Creating socket file descriptor 
-			if ((server_fd = socket(this->socket_family, this->socket_type, 0)) == 0) 
-			{ 
-				perror("Socket creation failed"); 
-				exit(EXIT_FAILURE); 
-			} 
-			else printf("Socket creation successful\n");
 
-			// Forcefully attaching socket to the port 
-			if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, 
-														&opt, sizeof(opt))) 
-			{ 
-				perror("setsockopt"); 
-				exit(EXIT_FAILURE); 
-			} 
-			this->serv_addr.sin_addr.s_addr = INADDR_ANY; 
-			
-			bool address_free_flag = false;
-			while (!address_free_flag) // TODO: Timeout and check again 
+			// Creating socket file descriptor
+			if ((server_fd = socket(this->socket_family, this->socket_type, 0)) == 0)
 			{
-				// Forcefully attaching socket to the specified port 
-				if (bind(server_fd, (struct sockaddr *)&this->serv_addr,  
-											sizeof(this->serv_addr))<0) 
-				{ 
-					perror("bind failed"); 
-					// printf("Trying again in 10 seconds\n");
-					// sleep(10);
-					exit(EXIT_FAILURE); 
-				} 
+				perror("Socket creation failed");
+				exit(EXIT_FAILURE);
+			}
+			else
+				printf("Socket creation successful\n");
+
+			// Forcefully attaching socket to the port
+			if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
+						   &opt, sizeof(opt)))
+			{
+				perror("Setsockopt failed");
+				exit(EXIT_FAILURE);
+			}
+			this->serv_addr.sin_addr.s_addr = INADDR_ANY;
+
+			bool address_free_flag = false;
+			while (!address_free_flag)
+			{
+				// Forcefully attaching socket to the specified port
+				if (bind(server_fd, (struct sockaddr *)&this->serv_addr,
+						 sizeof(this->serv_addr)) < 0)
+				{
+					perror("Bind failed");
+					this->pollingTimeout();
+				}
 				else
 					address_free_flag = true;
 			}
-			
+
 			if (listen(server_fd, 1) < 0) // queue of pending connections -> 1
-			{ 
-				perror("listen"); 
-				exit(EXIT_FAILURE); 
-			} 
+			{
+				perror("listen");
+				exit(EXIT_FAILURE);
+			}
 
 			printf("Waiting for a connection ...\n");
-			if ((sock = accept(server_fd, (struct sockaddr *)&this->serv_addr,  
-							(socklen_t*)&addrlen))<0) 
-			{ 
-				perror("accept"); 
-				exit(EXIT_FAILURE); 
-			} 
+			if ((sock = accept(server_fd, (struct sockaddr *)&this->serv_addr,
+							   (socklen_t *)&addrlen)) < 0)
+			{
+				perror("accept");
+				exit(EXIT_FAILURE);
+			}
 			if (this->socket_family == AF_INET) // TODO: Check for IPV6 as well
 				printf("Connected IP address: %s:%d\n", inet_ntoa(this->serv_addr.sin_addr), htons(this->serv_addr.sin_port));
 			printf("Connection established ...\n");
 		}
-		else{
+		else
+		{
 			if ((sock = socket(this->socket_family, this->socket_type, 0)) < 0)
 				printf("Socket creation error\n");
 			else
@@ -116,10 +126,31 @@ EzCppSocket::~EzCppSocket(){};
  */
 void EzCppSocket::establishConnect()
 {
-	if (connect(this->sock, (struct sockaddr *)&this->serv_addr, sizeof(this->serv_addr)) < 0)
-		printf("\nConnection Failed \n");
+	bool address_free_flag = false;
+	while (!address_free_flag) // TODO: Timeout and check again
+	{
+		if (connect(this->sock, (struct sockaddr *)&this->serv_addr, sizeof(this->serv_addr)) < 0)
+		{
+			perror("\nConnection Failed \n");
+			this->pollingTimeout();
+		}
+		else
+		{
+			printf("\n Socket connection successful \n");
+			address_free_flag = true;
+		}
+	}
+}
+
+void EzCppSocket::pollingTimeout()
+{
+	if (this->reconnect_on_address_busy > 0)
+	{
+		printf("Will attempt to reconnect in %d seconds ...\n", this->reconnect_on_address_busy / 1000000);
+		usleep(this->reconnect_on_address_busy);
+	}
 	else
-		printf("\n Socket connection successful \n");
+		exit(EXIT_FAILURE);
 }
 
 /**
@@ -131,6 +162,39 @@ void EzCppSocket::Disconnect()
 	close(sock);
 }
 
+void EzCppSocket::insertTokens(std::string &msg)
+{
+	msg = this->tokens.first + msg + this->tokens.second;
+}
+
+void EzCppSocket::extractTokens(std::string &msg)
+{
+	// Start token extraction
+	if (msg.find(this->tokens.first) == 0)
+	{
+		msg = msg.substr(this->tokens.first.length());
+	}
+	else
+	{
+		std::cout << "Starting token was not found at the beginning of message received!"
+				  << " Please check if the right kind of data is being sent/received or that"
+				  << " the same tokens are set on server and client ends...\n";
+		exit(EXIT_FAILURE);
+	}
+
+	// End token extraction
+	if (msg.rfind(this->tokens.second) == (msg.length() - this->tokens.second.length()))
+	{
+		msg = msg.substr(0, msg.length() - this->tokens.second.length());
+	}
+	else
+	{
+		std::cout << "Ending token was not found at the end of message received!"
+				  << " Please check if the right kind of data is being sent/received or that"
+				  << " the same tokens are set on server and client ends...\n";
+		exit(EXIT_FAILURE);
+	}
+}
 // Incoming
 /**
  * @brief Read bool value received on port
@@ -172,14 +236,15 @@ std::string EzCppSocket::readString()
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
 
-	if (this->debug)
-		printf("readString buffer received: %s\n", buffer);
+	std::string str(&buffer[0], &buffer[buffer_size]);
+	this->extractTokens(str);
 
-	std::string str;
-	// This cleans up the extra characters that may appear
-	// even if str(buffer) is used
-	for (int i = 0; i < buffer_size; ++i)
-		str.push_back(buffer[i]);
+	if (this->debug)
+	{
+		printf("readString buffer received: %s\n", buffer);
+		printf("Final string : %s\n", str.c_str());
+	}
+
 	return str;
 }
 
@@ -191,14 +256,20 @@ std::string EzCppSocket::readString()
  */
 int EzCppSocket::readInt(const int buffer_size)
 {
-	char buffer[buffer_size] = {0};
-	int valread = read(sock, buffer, buffer_size);
+	const int token_compensated_buffer_size = this->tokens.first.length() + buffer_size + this->tokens.second.length();
+	char buffer[token_compensated_buffer_size] = {0};
+	int valread = read(sock, buffer, token_compensated_buffer_size);
+
+	std::string str(&buffer[0], &buffer[token_compensated_buffer_size]);
+	this->extractTokens(str);
 
 	if (this->debug)
+	{
 		printf("readInt buffer received: %s\n", buffer);
+		printf("Converted int : %i\n", std::stoi(str));
+	}
 
-	std::ostringstream s(buffer);
-	return std::stoi(s.str().substr(0,buffer_size));
+	return std::stoi(str);
 }
 
 /**
@@ -209,14 +280,20 @@ int EzCppSocket::readInt(const int buffer_size)
  */
 float EzCppSocket::readFloat(const int buffer_size)
 {
-	char buffer[buffer_size] = {0};
-	int valread = read(sock, buffer, buffer_size);
+	const int token_compensated_buffer_size = this->tokens.first.length() + buffer_size + this->tokens.second.length();
+	char buffer[token_compensated_buffer_size] = {0};
+	int valread = read(sock, buffer, token_compensated_buffer_size);
+
+	std::string str(&buffer[0], &buffer[token_compensated_buffer_size]);
+	this->extractTokens(str);
 
 	if (this->debug)
+	{
 		printf("readFloat buffer received: %s\n", buffer);
+		printf("Converted float : %f\n", std::stof(str));
+	}
 
-	std::ostringstream s(buffer);
-	return std::stof(s.str());
+	return std::stof(str);
 }
 
 /**
@@ -230,11 +307,9 @@ std::vector<int> EzCppSocket::readIntList()
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
 
-	if (this->debug)
-		printf("readIntList buffer received: %s\n", buffer);
-
 	// remove the [] characters around the received list
-	std::string str(buffer);
+	std::string str(&buffer[0], &buffer[buffer_size]);
+	this->extractTokens(str);
 	str = str.substr(1, str.find("]") - 1);
 
 	std::stringstream ss(str);
@@ -244,6 +319,17 @@ std::vector<int> EzCppSocket::readIntList()
 	{
 		v.push_back(std::stoi(ss_elem));
 	}
+
+	if (this->debug)
+	{
+		printf("readIntList buffer received: %s\n", buffer);
+		for (auto elem : v)
+		{
+			printf("%i ,", elem);
+		}
+		std::cout << "\n";
+	}
+
 	return v;
 }
 
@@ -258,11 +344,9 @@ std::vector<float> EzCppSocket::readFloatList()
 	char buffer[buffer_size] = {0};
 	int valread = read(sock, buffer, buffer_size);
 
-	if (this->debug)
-		printf("readFloatList buffer received: %s\n", buffer);
-
 	// remove the [] characters around the received list
-	std::string str(buffer);
+	std::string str(&buffer[0], &buffer[buffer_size]);
+	this->extractTokens(str);
 	str = str.substr(1, str.find("]") - 1);
 
 	std::stringstream ss(str);
@@ -271,6 +355,16 @@ std::vector<float> EzCppSocket::readFloatList()
 	while (getline(ss, ss_elem, ','))
 	{
 		v.push_back(std::stof(ss_elem));
+	}
+
+	if (this->debug)
+	{
+		printf("readFloatList buffer received: %s\n", buffer);
+		for (auto elem : v)
+		{
+			printf("%f ,", elem);
+		}
+		std::cout << "\n";
 	}
 	return v;
 }
@@ -292,6 +386,10 @@ cv::Mat EzCppSocket::readImage()
 	std::vector<char> data;
 	for (int i = 0; i < buffer_size; i++)
 		data.push_back(buffer[i]);
+
+	std::string data_str(data.begin(), data.end());
+	this->extractTokens(data_str);
+	data = std::vector<char>(data_str.begin(), data_str.end());
 
 	cv::Mat frame;
 	frame = cv::imdecode(cv::Mat(data), 1);
@@ -323,12 +421,14 @@ void EzCppSocket::sendBool(bool data)
  */
 void EzCppSocket::sendString(std::string msg)
 {
+	this->insertTokens(msg);
 	const int buffer_size = msg.size();
 	this->sendInt(buffer_size);
 	const char *msg_ptr = msg.c_str();
 
 	if (this->debug)
 		std::cout << "Message sent length : " << strlen(msg_ptr) << "\n";
+	std::cout << "Sending message : " << msg << "\n";
 
 	send(this->sock, msg_ptr, strlen(msg_ptr), 0);
 }
@@ -343,7 +443,15 @@ void EzCppSocket::sendInt(int data)
 	std::string int_str = std::to_string(data);
 	std::string int_message =
 		std::string(16 - int_str.length(), '0') + int_str;
-	send(this->sock, int_message.c_str(), 16, 0);
+	this->insertTokens(int_message);
+
+	if (this->debug)
+	{
+		std::cout << "Message sent length : " << int_message.length() << "\n";
+		std::cout << "Sending message : " << int_message << "\n";
+	}
+
+	send(this->sock, int_message.c_str(), this->tokens.first.length() + 16 + this->tokens.second.length(), 0);
 }
 
 /**
@@ -356,7 +464,15 @@ void EzCppSocket::sendFloat(float data)
 	std::string float_str = std::to_string(data);
 	std::string float_message =
 		std::string(16 - float_str.length(), '0') + float_str;
-	send(this->sock, float_message.c_str(), 16, 0);
+	this->insertTokens(float_message);
+
+	if (this->debug)
+	{
+		std::cout << "Message sent length : " << float_message.length() << "\n";
+		std::cout << "Sending message : " << float_message << "\n";
+	}
+
+	send(this->sock, float_message.c_str(), this->tokens.first.length() + 16 + this->tokens.second.length(), 0);
 }
 
 /**
@@ -373,7 +489,7 @@ void EzCppSocket::sendIntList(std::vector<int> data)
 		int_list.append(std::to_string(val) + ",");
 	}
 	// remove the extra comma and add a closing bracket
-	int_list.substr(0,int_list.length()-2);
+	int_list.substr(0, int_list.length() - 2);
 	int_list += "]";
 	this->sendString(int_list);
 }
@@ -392,7 +508,7 @@ void EzCppSocket::sendFloatList(std::vector<float> data)
 		float_list.append(std::to_string(val) + ",");
 	}
 	// remove the extra comma and add a closing bracket
-	float_list.substr(0,float_list.length()-2);
+	float_list.substr(0, float_list.length() - 2);
 	float_list += "]";
 	this->sendString(float_list);
 }
@@ -401,22 +517,22 @@ void EzCppSocket::sendFloatList(std::vector<float> data)
  * @brief Send Image
  * 
  * @param img Image to be sent
- * @param send_size_first Whether size message should be sent first
  */
-void EzCppSocket::sendImage(cv::Mat img, bool send_size_first)
+void EzCppSocket::sendImage(cv::Mat img)
 {
 	int pixel_number = img.rows * img.cols / 2;
 
 	std::vector<uchar> buf(pixel_number);
 	cv::imencode(".jpg", img, buf);
 
-	if (send_size_first)
-	{
-		std::string length_str = std::to_string(buf.size());
-		std::string length_message =
-			std::string(16 - length_str.length(), '0') + length_str;
-		send(this->sock, length_message.c_str(), 16, 0);
-	}
+	// Token handling
+	std::string buf_str(buf.begin(), buf.end());
+	this->insertTokens(buf_str);
+	buf = std::vector<uchar>(buf_str.begin(), buf_str.end());
 
+	// Send image size first
+	this->sendInt(buf.size());
+
+	// Send image
 	send(this->sock, buf.data(), buf.size(), 0);
 }

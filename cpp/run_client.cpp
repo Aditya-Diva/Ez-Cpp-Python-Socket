@@ -2,7 +2,7 @@
 
 int main(int argc, char const *argv[])
 {
-	EzCppSocket c = EzCppSocket();
+	EzCppSocket c = EzCppSocket("127.0.0.1", 10000, 2, 1, false, true, 1, false);
 
 	// Sending
 	std::cout << "Sending data...\n";
