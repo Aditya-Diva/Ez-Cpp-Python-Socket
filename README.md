@@ -1,52 +1,59 @@
 # Ez-Cpp-Python-Socket
+
 > Cpp Python socket abstraction library that attempts to simplify TCP/IP socket communication.
 
 Types of messages that can be sent to and fro are as shown below:
-```
-Type       Cpp    Python            Extra Info
-==========================================================
-bool        Y       Y
-string      Y       Y
-int         Y       Y
-float       Y       Y
-list<int>   Y       Y   vector<int>     <->     list
-list<float> Y       Y   vector<float>   <->     list
-image       Y       Y
-```
+
+| Type          | Cpp | Python |      Extra Info      |
+| :---:         |:---:| :---:  |        :---:         |
+| bool          |  Y  |   Y    |                      |
+| string        |  Y  |   Y    |                      |
+| int           |  Y  |   Y    |                      |
+| float         |  Y  |   Y    |                      |
+| list<int>     |  Y  |   Y    |vector<int> <-> list  |
+| list<float>   |  Y  |   Y    |vector<float> <-> list|
+| image         |  Y  |   Y    |     cv:: Mat         |
+
 The following configurations are supported:
-```
-  Server  Client
-1. Cpp     Cpp  
-2. Cpp     Py   
-3. Py      Cpp  
-4. Py      Py   
-```
 
-Configurable Functionalities include:
-- Polling in case address is busy
-- Start and end tokens for every message passed
+| Server | Client |
+|  :---: | :---:  |
+|  Cpp   |  Cpp   |
+|  Cpp   |  Py    |  
+|  Py    |  Cpp   |  
+|  Py    |  Py    |  
 
-Note: There is a limitation to the size of image that can be sent. It's a work in progress. : )
+Addition Server-Client Configurations include:
+
+* Polling in case address is busy
+* Start and end tokens for every message passed
 
 ### Sample Images
+
 ![Sample1](imgs/sample1.png)
+
 ![Sample2](imgs/sample2.png)
 
 ## Installation
+
 Preferably use dockers or virtual environments.
 
 ### Linux:
+
 Python Dependencies
-```
+
+``` 
+
 ./install_dep.sh
 ```
-C++ Dependencies : Install [OpenCV](https://github.com/opencv/opencv)
 
+C++ Dependencies : Install [OpenCV](https://github.com/opencv/opencv)
 
 ## Demo
 
 ### Docker
-```
+
+``` sh
 ./build_docker.sh # build docker image in demo or dev mode
 ./run_docker.sh # runs docker in mode selected
 
@@ -55,25 +62,32 @@ C++ Dependencies : Install [OpenCV](https://github.com/opencv/opencv)
 ```
 
 ### Local Installation / VirtualEnv
+
 Assuming that OpenCV has already been installed and accessible by C++.
 Run shell script to download python dependencies and run demo.
-To run demo of server and client together,
-```
+To run demo of server and client together, 
+
+``` sh
 ./run_examples.sh
 ```
-To test out demo of example functionalities
-```
-./test_functionalities/test_<name of functionality>.sh
+
+To test out demo of example configurations
+
+``` sh
+./tests/test_<name_of_test>.sh
 ```
 
 ## Usage Example
-To inspect usage of commands,
-Refer to run_server and run_client scripts in [python](python) & [cpp](cpp) folders. For additional functionalities check out the examples folders in each folder.
+
+To inspect usage of commands, 
+Refer to run_server and run_client scripts in [python](python) & [cpp](cpp) folders. For additional examples check out the examples folders in each folder.
 
 ## Meta
 
 Aditya Divakaran - [@LinkedIn](https://www.linkedin.com/in/aditya-divakaran/) - [@Github](https://github.com/Aditya-Diva) - [@GMail](adi.develops@gmail.com)
 
 Note:
-- This was tested on Ubuntu 20.04 in a virtual environment and on docker. 
-- This is a fun project that was picked up while understanding socket communication for other projects that I'm tinkering with.
+
+* This was tested on Ubuntu 20.04 in a virtual environment and on docker. 
+* Image used in repo is from [Pixabay](https://pixabay.com/photos/bulb-idea-fire-flame-neon-5665770/).
+* This is a fun project that was picked up while understanding socket communication for other projects that I'm tinkering with.

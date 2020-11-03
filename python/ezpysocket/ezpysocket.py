@@ -8,6 +8,9 @@ class EzPySocket:
     """[summary] Python - Cpp Communication Server Object
     """
 
+    __sleep_between_packets = 0.00005
+    __packet_size = 59625
+
     def __init__(self, server_address: str = "127.0.0.1",
                  server_port: int = 10000,
                  socket_family=socket.AF_INET,
@@ -16,7 +19,7 @@ class EzPySocket:
                  auto_connect: bool = True,
                  client_connection_count: int = 1,
                  server_mode: bool = True,
-                 reconnect_on_address_busy: float = -1.0,
+                 reconnect_on_address_busy: float = 0.0,
                  tokens: [str, str] = ["", ""]):
         """[summary]
 
@@ -43,7 +46,7 @@ class EzPySocket:
             client_connection_count (int, optional): [Number of connections to support]. Defaults to 1.
             server_mode (bool, optional): [Run as server (True) or client (False)]. Defaults to True.
             reconnect_on_address_busy (float, optional): [Attempt to reconnect
-            after time(in seconds) specified here]. Defaults to -1 (Don't reconnect, simply exit).
+            after time(in seconds) specified here]. Defaults to 0.0 (Don't reconnect, simply exit).
             tokens ([type], str): [Define a start and end token when communicating, helps debug
             and ensure that the right message is passed through.]. Defaults to ["", ""].
         """
@@ -74,14 +77,16 @@ class EzPySocket:
                     address_free_flag = True
                 except OSError as oserr:
                     print(oserr)
-                    if (self.__reconnect_on_address_busy != -1):
-                        print("Trying to bind to address...")
-                        self.polling_timeout()
+                    if (self.__reconnect_on_address_busy != 0.0):
+                        print("\nServer Trying to Bind to Address Failed...")
+                        self.__polling_timeout()
                     else:
                         print("server setting:",
                               self.__reconnect_on_address_busy)
                         print("Please make sure address is free, else use reconnect_on_address_busy argument ",
-                              "to keep polling as per required passed ")
+                              "to keep polling in periodic intervals. If you have just run a server previously ",
+                              "there's a good chance the previous server will be down in a couple of seconds.",
+                              "Use polling functionality to avoid waiting for address to be free again.")
                         exit()
                 except Exception as e:
                     print(e)
@@ -103,31 +108,19 @@ class EzPySocket:
                     print("Socket connection successful")
                 except Exception as e:
                     print("Socket connection failed : ", e)
-                    if (self.__reconnect_on_address_busy != -1):
-                        print("Trying to bind to address...")
-                        self.polling_timeout()
+                    if (self.__reconnect_on_address_busy != 0.0):
+                        print("\nClient Trying to Connect to Server Failed...")
+                        self.__polling_timeout()
                     else:
                         print("client setting: '",
                               self.__reconnect_on_address_busy, "'")
                         print("Please make sure address is free, else use reconnect_on_address_busy argument ",
-                              "to keep polling as per required passed ")
+                              "to keep polling in periodic intervals")
                         exit()
-
-    def polling_timeout(self):
-        """[summary] Implement timeout between networking calls in case an exception is
-            raised at the moment
-        """
-        if self.__reconnect_on_address_busy < 0:
-            print("Reconnection time sent invalid, using default time of 10 seconds...")
-            time.sleep(10)
-        else:
-            print("Will attempt to reconnect in",
-                  self.__reconnect_on_address_busy, "seconds")
-            time.sleep(self.__reconnect_on_address_busy)
 
     def create_socket(self):
         """[summary]
-        Create a socker
+        Create a socket
         """
         try:
             self.__sock = socket.socket(self.__socket_family,
@@ -159,10 +152,54 @@ class EzPySocket:
         except:
             print("Connection already closed successfully")
 
+    def set_sleep_between_packets(self, seconds :float):
+        """[summary] A setter function to add a delay between packet read/write
+            which ensures that it does so properly. It's been observed that 
+            increasing this when images don't come through properly helps.
+
+        Args:
+            seconds (float): [Time to sleep between packet read/write]
+        """
+        self.__sleep_between_packets = seconds
+
+    def set_packet_size(self, number_of_bytes :int):
+        """[summary] A setter function to set size of packets during read/write
+            Note: The value passed should not be more than 65535 (64K)
+
+        Args:
+            number_of_bytes (int): [Size of packet in bytes]
+        """
+        if number_of_bytes > 0:
+            self.__packet_size = number_of_bytes
+        else:
+            print("\nInvalid packet size was provided. Not updating packet size.\n")
+
     def __del__(self):
         self.disconnect()
 
+    def __polling_timeout(self):
+        """[summary] Where polling is required in periodic intervals, this is 
+            the function that implements the timeout for the same
+        """
+        if self.__reconnect_on_address_busy < 0.0:
+            print("Reconnection time sent invalid, using default time of 10 seconds...")
+            time.sleep(10)
+        else:
+            print("Will attempt to reconnect in",
+                  self.__reconnect_on_address_busy, "seconds")
+            time.sleep(self.__reconnect_on_address_busy)
+
     def __insert_tokens(self, message):
+        """[summary] Insert tokens to the message that is being passed. This includes
+            both the start token at the beginning of the message and the end token
+            at the end of the message.
+
+        Args:
+            message ([str/bytes]): [Message to be sent]
+
+        Returns:
+            [str/bytes]: [Token included message]
+        """
         if self.__tokens != ["", ""]:
             if type(message) is bytes:
                 try:  # works for the usual bytes that is being sent
@@ -175,6 +212,20 @@ class EzPySocket:
         return message
 
     def __extract_tokens(self, message):
+        """[summary] Extracting tokens from the received messages to get the actual message.
+            This also serves as a check on the validity of the message. Currently throws
+            an error if invalid message is received.
+
+        Args:
+            message ([str/bytes]): [Token included received message]
+
+        Raises:
+            Exception: [Starting token check in received message failed]
+            Exception: [Ending token check in received message failed]
+
+        Returns:
+            [str/bytes]: [Message with tokens extracted]
+        """
         if self.__tokens != ["", ""]:
             if type(message) is bytes:
                 start_token = bytes(self.__tokens[0], encoding='utf8')
@@ -190,7 +241,7 @@ class EzPySocket:
                     "Starting token was not found at the beginning of message received!",
                     " Please check if the right kind of data is being sent/received or that",
                     " the same tokens are set on server and client ends...")
-                exit(0)
+                raise Exception("Starting token check in received message failed")
             else:
                 message = message[index+len(start_token):]
 
@@ -201,7 +252,7 @@ class EzPySocket:
                     "Ending token was not found at the end of message received!",
                     " Please check if the right kind of data is being sent/received or that",
                     " the same tokens are set on server and client ends...")
-                exit(0)
+                raise Exception("Ending token check in received message failed")
             else:
                 message = message[:-len(end_token)]
         return message
@@ -325,7 +376,21 @@ class EzPySocket:
             print("receive_image: message_length received : ",
                   message_length)
 
-        data_img_buffer = self.__connection.recv(message_length)  # blocking
+        data_img_buffer = bytes()
+        packet_start_index = 0
+        packet_size_curr = self.__packet_size
+        while packet_start_index < message_length:
+            if ((packet_start_index + self.__packet_size) > message_length):
+                packet_size_curr = message_length - packet_start_index
+
+            data_img_buffer += self.__connection.recv(packet_size_curr)  # blocking
+            if self.__debug:
+                print("Receiving packet no. ", packet_start_index / self.__packet_size)
+                print("Current packet size : ", packet_size_curr)
+                print("Current size of data accumulated : ", len(data_img_buffer))
+            packet_start_index += packet_size_curr
+            time.sleep(self.__sleep_between_packets)
+
         data_img_buffer = self.__extract_tokens(data_img_buffer)
         data_img = np.frombuffer(data_img_buffer, dtype=dtype)
         decimg = cv2.imdecode(data_img, color_format)
@@ -334,6 +399,12 @@ class EzPySocket:
     # Outgoing
 
     def __send_byte_data(self, datatype: str, data):
+        """[summary] Common send message as bytes functionality
+
+        Args:
+            datatype (str): [Type of data that's being sent]
+            data ([type]): [Data to be sent]
+        """
         data = bytes(data, 'utf-8')
         if self.__debug:
             print("Sending " + datatype + " ...", data)
@@ -406,8 +477,15 @@ class EzPySocket:
         """
         data = self.__insert_tokens(cv2.imencode('.jpg', img)[1].tobytes())
         self.send_int(len(data))
-        self.__connection.sendall(data)
 
-
-# TODO: Add a security check with goes through a list to understand
-# which connections should be allowed
+        packet_start_index = 0
+        packet_size_curr = self.__packet_size
+        while packet_start_index < len(data):
+            if ((packet_start_index + self.__packet_size) > len(data)):
+                packet_size_curr = len(data) - packet_start_index
+            if self.__debug:
+                print("Sending packet no. ", packet_start_index / self.__packet_size)
+                print("Sending packet of size : ", len(data[packet_start_index:packet_start_index+packet_size_curr]))
+            self.__connection.sendall(data[packet_start_index:packet_start_index+packet_size_curr])
+            packet_start_index += packet_size_curr
+            time.sleep(self.__sleep_between_packets)

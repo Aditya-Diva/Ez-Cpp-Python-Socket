@@ -66,6 +66,7 @@ int main(int argc, char const *argv[])
 	cv::imshow("Cpp Client Received Image", recv_img);
 	std::cout << "Press a key on image to end demo\n";
 	cv::waitKey(0);
+	cv::destroyAllWindows();
 
 	c.Disconnect();
 

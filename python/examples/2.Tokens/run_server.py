@@ -6,7 +6,7 @@ if __name__ == "__main__":
 
     # Init
     s = ps.EzPySocket(tokens=["start", "end"],
-                      reconnect_on_address_busy=5, debug=True)
+                      reconnect_on_address_busy=5)
 
     # Load image
     img = cv2.imread("lena.jpg", 1)
@@ -37,9 +37,9 @@ if __name__ == "__main__":
     img = s.receive_image()
     print("Showing image...")
     cv2.imshow("Python Server Received image", img)
-    print("Press a key to start sending from Python server to Python client...")
+    print("Press a key to start sending from Python server to client...")
     cv2.waitKey(0)
-
+    cv2.destroyAllWindows()
 
 # Send examples
     print("Sending data...")

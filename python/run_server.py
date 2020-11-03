@@ -36,9 +36,9 @@ if __name__ == "__main__":
     img = s.receive_image()
     print("Showing image...")
     cv2.imshow("Python Server Received image", img)
-    print("Press a key to start sending from Python server to Python client...")
+    print("Press a key to start sending from Python server to client...")
     cv2.waitKey(0)
-
+    cv2.destroyAllWindows()
 
 # Send examples
     print("Sending data...")

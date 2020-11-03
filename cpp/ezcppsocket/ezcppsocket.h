@@ -36,9 +36,11 @@ private:
 	bool debug;									// Debug flag
 	struct sockaddr_in serv_addr;				// Address struct
 	int client_connection_count;				// No. of client connections our server should accept
-	unsigned int reconnect_on_address_busy;		// No. of useconds timeout before polling again in case of errors raised
+	float reconnect_on_address_busy;			// No. of seconds timeout before polling again in case of errors raised
 	std::pair<std::string, std::string> tokens; // Pair of tokens (start_token, end_token)
-
+	unsigned int sleep_between_packets = 50;	// No. of useconds between reading/sending packets of data
+	unsigned int packet_size = 59625;			// No. of bytes in a packet read/write (Should not be more than 65535 (64K))
+	
 	void insertTokens(std::string &msg);
 	void extractTokens(std::string &msg);
 	void pollingTimeout();
@@ -52,11 +54,13 @@ public:
 				bool auto_connect = true,
 				int client_connection_count = 1,
 				bool server_mode = true,
-				unsigned int reconnect_on_address_busy = 0,
+				float reconnect_on_address_busy = 0,
 				std::pair<std::string, std::string> tokens = std::pair<std::string, std::string>("", ""));
 	~EzCppSocket();
 	void establishConnect();
 	void Disconnect();
+	void setSleepBetweenPackets(unsigned int microseconds);
+	void setPacketSize(unsigned int number_of_bytes);
 
 	// Incoming
 

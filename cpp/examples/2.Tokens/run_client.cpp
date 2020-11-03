@@ -2,7 +2,7 @@
 
 int main(int argc, char const *argv[])
 {
-	EzCppSocket c = EzCppSocket("127.0.0.1", 10000, 2, 1, false, true, 1, false, 5000000U, std::pair<std::string, std::string>("start", "end"));
+	EzCppSocket c = EzCppSocket("127.0.0.1", 10000, 2, 1, false, true, 1, false, 5, std::pair<std::string, std::string>("start", "end"));
 
 	// Sending
 	std::cout << "Sending data...\n";
@@ -66,6 +66,7 @@ int main(int argc, char const *argv[])
 	cv::imshow("Cpp Client Received Image", recv_img);
 	std::cout << "Press a key on image to end demo\n";
 	cv::waitKey(0);
+	cv::destroyAllWindows();
 
 	c.Disconnect();
 

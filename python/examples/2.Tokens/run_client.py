@@ -6,7 +6,7 @@ if __name__ == "__main__":
 
     # Init
     s = ps.EzPySocket(server_mode=False, tokens=[
-                      "start", "end"], debug=True, reconnect_on_address_busy=5)
+                      "start", "end"], reconnect_on_address_busy=5)
 
     # Load image
     img = cv2.imread("lena.jpg", 1)
@@ -65,5 +65,6 @@ if __name__ == "__main__":
     cv2.imshow("Python Client Received image", img)
     print("Press a key on img to exit demo")
     cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     s.disconnect()

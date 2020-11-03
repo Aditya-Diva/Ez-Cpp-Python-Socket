@@ -64,5 +64,6 @@ if __name__ == "__main__":
     cv2.imshow("Python Client Received image", img)
     print("Press a key on img to exit demo")
     cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     s.disconnect()
