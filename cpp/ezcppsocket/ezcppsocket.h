@@ -18,6 +18,7 @@
 
 #include <sstream>
 #include <vector>
+#include <chrono>
 
 #ifndef __EZCPPSOCKET__
 #define __EZCPPSOCKET__
@@ -40,7 +41,11 @@ private:
 	std::pair<std::string, std::string> tokens; // Pair of tokens (start_token, end_token)
 	unsigned int sleep_between_packets = 50;	// No. of useconds between reading/sending packets of data
 	unsigned int packet_size = 59625;			// No. of bytes in a packet read/write (Should not be more than 65535 (64K))
-	
+
+	bool loop_flag = false;
+	unsigned int loop_iteration_count = 0;
+	std::chrono::time_point<std::chrono::high_resolution_clock> loop_start_time = std::chrono::high_resolution_clock::now();
+
 	void insertTokens(std::string &msg);
 	void extractTokens(std::string &msg);
 	void pollingTimeout();
@@ -60,7 +65,15 @@ public:
 	void establishConnect();
 	void Disconnect();
 	void setSleepBetweenPackets(unsigned int microseconds);
+	unsigned int getSleepBetweenPackets();
 	void setPacketSize(unsigned int number_of_bytes);
+
+	bool getLoopFlag();
+	void loop_func_decorator(void (*func_ptr)(EzCppSocket&), bool show_ips);
+	void serverLoop(void (*func_ptr)(EzCppSocket&), int loop_count = 0, bool show_ips = true);
+	void clientLoop(void (*func_ptr)(EzCppSocket&), int loop_count = 0, bool show_ips = true);
+	void stopLoop();
+	void resetLoop();
 
 	// Incoming
 

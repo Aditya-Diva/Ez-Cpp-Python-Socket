@@ -11,6 +11,10 @@ class EzPySocket:
     __sleep_between_packets = 0.00005
     __packet_size = 59625
 
+    __loop_flag = False
+    __loop_iteration_count = 0
+    __loop_start_time = 0
+
     def __init__(self, server_address: str = "127.0.0.1",
                  server_port: int = 10000,
                  socket_family=socket.AF_INET,
@@ -60,6 +64,8 @@ class EzPySocket:
 
         self.__tokens = tokens
 
+        self.__auto_connect = auto_connect
+
         self.create_socket()
 
         # Bind sever socket to specific address and port
@@ -94,11 +100,8 @@ class EzPySocket:
             # number of client connection(s) to accept
             self.__connection_count = client_connection_count
 
-            # Listen for incoming connection(s) from clients
-            self.__sock.listen(self.__connection_count)
-
-            if auto_connect:
-                self.connect()
+            # listen and connect auto
+            self.server_listen()
         else:
             while not address_free_flag:
                 try:
@@ -117,6 +120,13 @@ class EzPySocket:
                         print("Please make sure address is free, else use reconnect_on_address_busy argument ",
                               "to keep polling in periodic intervals")
                         exit()
+
+    def server_listen(self):
+        # Listen for incoming connection(s) from clients
+        self.__sock.listen(self.__connection_count)
+
+        if self.__auto_connect:
+            self.connect()
 
     def create_socket(self):
         """[summary]
@@ -152,7 +162,7 @@ class EzPySocket:
         except:
             print("Connection already closed successfully")
 
-    def set_sleep_between_packets(self, seconds :float):
+    def set_sleep_between_packets(self, seconds: float):
         """[summary] A setter function to add a delay between packet read/write
             which ensures that it does so properly. It's been observed that 
             increasing this when images don't come through properly helps.
@@ -162,7 +172,12 @@ class EzPySocket:
         """
         self.__sleep_between_packets = seconds
 
-    def set_packet_size(self, number_of_bytes :int):
+    def get_sleep_between_packets(self):
+        """[summary] A getter function to get delay between packet read/write.
+        """
+        return self.__sleep_between_packets
+
+    def set_packet_size(self, number_of_bytes: int):
         """[summary] A setter function to set size of packets during read/write
             Note: The value passed should not be more than 65535 (64K)
 
@@ -173,6 +188,85 @@ class EzPySocket:
             self.__packet_size = number_of_bytes
         else:
             print("\nInvalid packet size was provided. Not updating packet size.\n")
+
+    def loop_func_decorator(self, func):
+        def new_func(self, data, show_ips):
+            self.__loop_iteration_count += 1
+            func(self, data)
+            if self.__debug or show_ips:
+                print("IPS : ", self.__loop_iteration_count /
+                      (time.time() - self.__loop_start_time))
+        return new_func
+
+    def server_loop(self, func, data: dict = {}, loop_count: int = 0, show_ips: bool = False):
+        """[summary]
+
+        Args:
+            func ([function]): [The function that has to be executed in the loop]
+            data (dict, optional): [The dictionary that needs to be passed to the function]. Defaults to {}.
+            loop_count (int, optional): [Looping behaviour
+            if -1, loops until stop_loop is called on server side,
+            if 0, loops until stop_loop is called from client side (Status string is sent)
+            else, loops for as many iterations as specified]. Defaults to 0.
+            show_ips (bool, optional): [Show iterations per second]. Defaults to False.
+        """
+        self.__loop_flag = True
+        self.__loop_start_time = time.time()
+        decorated_func = self.loop_func_decorator(func)
+        if loop_count == -1:
+            while self.__loop_flag:
+                decorated_func(self, data, show_ips)
+
+        if loop_count == 0:
+            # Server is up until Client has gotten its request
+            status = "Active"
+            while status != "Stop":
+                decorated_func(self, data, show_ips)
+                status = self.receive_string()
+        else:
+            # Server serves for certain iterations
+            for _ in range(loop_count):
+                decorated_func(self, data, show_ips)
+        self.reset_loop()
+
+    def client_loop(self, func, data: dict = {}, loop_count: int = 0, show_ips: bool = True):
+        """[summary]
+
+        Args:
+            func ([function]): [The function that has to be executed in the loop]
+            data (dict, optional): [The dictionary that needs to be passed to the function]. Defaults to {}.
+            loop_count (int, optional): [Looping behaviour
+            if 0, loops until stop_loop is called from client side
+            else, loops for as many iterations as specified]. Defaults to 0.
+            show_ips (bool, optional): [Show iterations per second]. Defaults to True.
+        """
+        self.__loop_flag = True
+        self.__loop_start_time = time.time()
+        decorated_func = self.loop_func_decorator(func)
+        if loop_count == 0:
+            # Server is up until Client has gotten its request
+            status = "Active"
+            while status != "Stop":
+                decorated_func(self, data, show_ips)
+                # Set & Send status
+                status = "Active" if self.__loop_flag else "Stop"
+                self.send_string(status)
+        else:
+            for _ in range(loop_count):
+                decorated_func(self, data, show_ips)
+        self.reset_loop()
+
+    def stop_loop(self):
+        """[summary] Set flag to stop looping
+        """
+        self.__loop_flag = False
+
+    def reset_loop(self):
+        """[summary] Resets all the loop related flags
+        """
+        self.__loop_flag = False
+        self.__loop_iteration_count = 0
+        self.__loop_start_time = 0
 
     def __del__(self):
         self.disconnect()
@@ -241,20 +335,28 @@ class EzPySocket:
                     "Starting token was not found at the beginning of message received!",
                     " Please check if the right kind of data is being sent/received or that",
                     " the same tokens are set on server and client ends...")
-                raise Exception("Starting token check in received message failed")
+                raise Exception(
+                    "Starting token check in received message failed")
             else:
                 message = message[index+len(start_token):]
 
             # Remove end token
-            index = message.rfind(end_token)
-            if index != (len(message) - len(end_token)):
-                print(
-                    "Ending token was not found at the end of message received!",
-                    " Please check if the right kind of data is being sent/received or that",
-                    " the same tokens are set on server and client ends...")
-                raise Exception("Ending token check in received message failed")
-            else:
-                message = message[:-len(end_token)]
+            end_token_in_message = False
+            while not end_token_in_message:
+                index = message.rfind(end_token)
+                if index != (len(message) - len(end_token)):
+                    print(
+                        "Ending token was not found at the end of message received!",
+                        " Please check if the right kind of data is being sent/received or that",
+                        " the same tokens are set on server and client ends...",
+                        "\nAdditionally, try increasing set_sleep_between_packets value.",
+                        "Current sleep_between_packets value: " + self.get_sleep_between_packets())
+                    raise Exception(
+                        "Ending token check in received message failed")
+                else:
+                    message = message[:-len(end_token)]
+                    end_token_in_message = True
+
         return message
 
     # Incoming
@@ -383,9 +485,11 @@ class EzPySocket:
             if ((packet_start_index + self.__packet_size) > message_length):
                 packet_size_curr = message_length - packet_start_index
 
-            data_img_buffer += self.__connection.recv(packet_size_curr)  # blocking
+            # blocking
+            data_img_buffer += self.__connection.recv(packet_size_curr)
             if self.__debug:
-                print("Receiving packet no. ", packet_start_index / self.__packet_size)
+                print("Receiving packet no. ",
+                      packet_start_index / self.__packet_size)
                 print("Current packet size : ", packet_size_curr)
                 print("Current size of data accumulated : ", len(data_img_buffer))
             packet_start_index += packet_size_curr
@@ -484,8 +588,11 @@ class EzPySocket:
             if ((packet_start_index + self.__packet_size) > len(data)):
                 packet_size_curr = len(data) - packet_start_index
             if self.__debug:
-                print("Sending packet no. ", packet_start_index / self.__packet_size)
-                print("Sending packet of size : ", len(data[packet_start_index:packet_start_index+packet_size_curr]))
-            self.__connection.sendall(data[packet_start_index:packet_start_index+packet_size_curr])
+                print("Sending packet no. ",
+                      packet_start_index / self.__packet_size)
+                print("Sending packet of size : ", len(
+                    data[packet_start_index:packet_start_index+packet_size_curr]))
+            self.__connection.sendall(
+                data[packet_start_index:packet_start_index+packet_size_curr])
             packet_start_index += packet_size_curr
             time.sleep(self.__sleep_between_packets)

@@ -189,6 +189,17 @@ void EzCppSocket::setSleepBetweenPackets(unsigned int microseconds)
 }
 
 /**
+ * @brief A getter function to get delay between packet read/write
+ * 
+ * @param microseconds Number of microseconds to wait before read/write of
+ * next packet
+ */
+unsigned int EzCppSocket::getSleepBetweenPackets()
+{
+	return this->sleep_between_packets;
+}
+
+/**
  * @brief A setter function to set size of packets during read/write
  * Note: The value passed should not be more than 65535 (64K)
  * @param number_of_bytes
@@ -200,6 +211,120 @@ void EzCppSocket::setPacketSize(unsigned int number_of_bytes)
 	else
 		printf("\nInvalid packet size was provided. Not updating packet size.\n");
 	
+}
+
+/**
+ * @brief Getter function to get loop status
+ * 
+ * @return true Loop is still active
+ * @return false Loop has stopped
+ */
+bool EzCppSocket::getLoopFlag(){
+	return this->loop_flag;
+}
+
+/**
+ * @brief A decorator functionality which prints IPS(iterations per second)
+ * 
+ * @param func_ptr Pointer to a function
+ * @param show_ips Bool flag to display IPS (iterations per second)
+ */
+void EzCppSocket::loop_func_decorator(void (*func_ptr)(EzCppSocket&), bool show_ips){
+	this->loop_iteration_count += 1;
+	func_ptr(*this);
+	if (this->debug || show_ips){
+		auto duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - this->loop_start_time); 
+		if (duration.count() != 0)
+			std::cout << "IPS : " <<  float(this->loop_iteration_count) / float(duration.count()) << "\n";
+	}
+}
+
+/**
+ * @brief Loop to run server
+ * 
+ * @param func_ptr Pointer to function that should be part of the server loop
+ * @param loop_count 
+ * Looping behaviour:
+ *   if -1, loops until stop_loop is called on server side,
+ *   if 0, loops until stop_loop is called from client side (Status string is sent)
+ *   else, loops for as many iterations as specified]. Defaults to 0.
+ * @param show_ips Bool flag to display IPS (iterations per second)
+ */
+void EzCppSocket::serverLoop(void (*func_ptr)(EzCppSocket&), int loop_count, bool show_ips){
+	this->loop_flag = true;
+	this->loop_start_time = std::chrono::high_resolution_clock::now();
+
+	if (loop_count == -1){
+		while (this->loop_flag)
+			loop_func_decorator(func_ptr, show_ips);
+	}
+
+	else if (loop_count == 0){
+		// Server is up until Client has gotten its request
+		std::string status = "Active";
+		while (status.compare("Stop") != 0){
+			loop_func_decorator(func_ptr, show_ips);
+			status = this->readString();
+		}
+	}
+	else{
+		// Server serves for certain iterations
+		for(int i = 0; i < loop_count; ++i)
+			loop_func_decorator(func_ptr, show_ips);
+	}
+
+	this->resetLoop();
+}
+
+/**
+ * @brief Loop to run client
+ * 
+ * @param func_ptr Pointer to the function that should be part of client loop
+ * @param loop_count 
+ * Looping behaviour
+ *	if 0, loops until stop_loop is called from client side
+ *	else, loops for as many iterations as specified]. Defaults to 0.
+ * @param show_ips Bool flag to display IPS (iterations per second)
+ */
+void EzCppSocket::clientLoop(void (*func_ptr)(EzCppSocket&), int loop_count, bool show_ips){
+	this->loop_flag = true;
+	this->loop_start_time = std::chrono::high_resolution_clock::now();
+
+	if (loop_count == 0){
+		// Server is up until Client has gotten its request
+		std::string status = "Active";
+		while (status.compare("Stop") != 0){
+			loop_func_decorator(func_ptr, show_ips);
+			// Set & Send status
+			status = (this->loop_flag)?"Active":"Stop";
+			this->sendString(status);
+		}
+	}
+	else{
+		// Client runs for certain iterations
+		for (int i = 0; i < loop_count; i++)
+			loop_func_decorator(func_ptr, show_ips);
+	}
+
+	this->resetLoop();
+}
+
+/**
+ * @brief Set flag to stop looping
+ * 
+ */
+void EzCppSocket::stopLoop(){
+	this->loop_flag = false;
+}
+
+/**
+ * @brief Resets all the loop related flags
+ * 
+ */
+void EzCppSocket::resetLoop(){
+	this->loop_flag = false;
+	this->loop_iteration_count = 0;
+	this->loop_start_time = std::chrono::high_resolution_clock::now();
 }
 
 /**
@@ -245,7 +370,9 @@ void EzCppSocket::extractTokens(std::string &msg)
 		{
 			std::cout << "Ending token was not found at the end of message received!"
 					  << " Please check if the right kind of data is being sent/received or that"
-					  << " the same tokens are set on server and client ends...\n";
+					  << " the same tokens are set on server and client ends...\n"
+					  << "Additionally, try increasing setSleepBetweenPackets value.\n"
+					  << "Current sleep_between_packets value: " << this->getSleepBetweenPackets();
 			throw "Ending token check in received message failed";
 		}
 	}

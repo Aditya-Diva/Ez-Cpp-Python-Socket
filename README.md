@@ -12,7 +12,7 @@ Types of messages that can be sent to and fro are as shown below:
 | float         |  Y  |   Y    |                      |
 | list<int>     |  Y  |   Y    |vector<int> <-> list  |
 | list<float>   |  Y  |   Y    |vector<float> <-> list|
-| image         |  Y  |   Y    |     cv:: Mat         |
+| image         |  Y  |   Y    |     cv::Mat          |
 
 The following configurations are supported:
 
@@ -25,8 +25,9 @@ The following configurations are supported:
 
 Addition Server-Client Configurations include:
 
-* Polling in case address is busy
-* Start and end tokens for every message passed
+* Polling in case address is busy: [Cpp](cpp/examples/1.Polling) [Python](python/examples/1.Polling)
+* Start and end tokens for every message passed [Cpp](cpp/examples/2.Tokens) [Python](python/examples/2.Tokens)
+* Continuous streaming (with webcam) [Cpp](cpp/examples/3.Webcam) [Python](python/examples/3.Webcam)
 
 ### Sample Images
 
@@ -88,6 +89,6 @@ Aditya Divakaran - [@LinkedIn](https://www.linkedin.com/in/aditya-divakaran/) - 
 
 Note:
 
-* This was tested on Ubuntu 20.04 in a virtual environment and on docker. 
+* This was tested on Ubuntu 20.04 in a virtual environment and on Docker. 
 * Image used in repo is from [Pixabay](https://pixabay.com/photos/bulb-idea-fire-flame-neon-5665770/).
 * This is a fun project that was picked up while understanding socket communication for other projects that I'm tinkering with.
