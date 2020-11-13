@@ -1,3 +1,3 @@
 #!/bin/bash
 xhost +
-docker run --device=/dev/video0:/dev/video0 -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY  ezsocket:latest
+docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix  --user user --device=/dev/video0:/dev/video0 ezsocket:latest

@@ -8,9 +8,9 @@ echo "4. Py      Py   "
 read -p "Choose the config that you'd like to run: " choice
 
 echo "Killing all previous instances if any ..."
-killall -9 python3
-killall -9 run_server
-killall -9 run_client
+pkill -9 python3
+pkill -9 run_server
+pkill -9 run_client
 
 if [ $choice -eq 1 ] 
 then

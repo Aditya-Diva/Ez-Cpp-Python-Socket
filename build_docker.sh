@@ -1,6 +1,6 @@
 echo "Choose your preference:"
 echo "1. Run demo directly"
-echo "2. Load into docker to dev/play"
+echo "2. Run docker in dev/play mode"
 read -p "Choose how you would like to launch the docker: " choice
 
 if [ $choice -eq 1 ] 
