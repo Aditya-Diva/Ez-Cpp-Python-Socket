@@ -372,7 +372,7 @@ void EzCppSocket::extractTokens(std::string &msg)
 					  << " Please check if the right kind of data is being sent/received or that"
 					  << " the same tokens are set on server and client ends...\n"
 					  << "Additionally, try increasing setSleepBetweenPackets value.\n"
-					  << "Current sleep_between_packets value: " << this->getSleepBetweenPackets();
+					  << "Current sleep_between_packets value: " << this->getSleepBetweenPackets() << "\n";
 			throw "Ending token check in received message failed";
 		}
 	}

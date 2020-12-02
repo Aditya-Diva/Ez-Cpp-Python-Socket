@@ -350,7 +350,7 @@ class EzPySocket:
                         " Please check if the right kind of data is being sent/received or that",
                         " the same tokens are set on server and client ends...",
                         "\nAdditionally, try increasing set_sleep_between_packets value.",
-                        "Current sleep_between_packets value: " + self.get_sleep_between_packets())
+                        "Current sleep_between_packets value: " + str(self.get_sleep_between_packets()) )
                     raise Exception(
                         "Ending token check in received message failed")
                 else:
