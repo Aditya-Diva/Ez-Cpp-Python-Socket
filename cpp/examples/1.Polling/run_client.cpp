@@ -23,7 +23,7 @@ int main(int argc, char const *argv[])
 	std::vector<float> vf(10, 3.14);
 	c.sendFloatList(vf);
 
-	cv::Mat img = cv::imread("lena.jpg");
+	cv::Mat img = cv::imread("../resources/lena.jpg");
 	c.sendImage(img);
 
 	// Receiving

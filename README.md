@@ -113,7 +113,7 @@ For a quickstart demo, do not follow local installation steps.
 ### Docker
 
 ```sh
-./run_docker.sh # runs demo directly if demo mode was selected while building
+./launch_docker.sh # runs demo directly if demo mode was selected while building
 
 # If in dev mode, after launching docker with previous command
 ./run_examples.sh # run demo

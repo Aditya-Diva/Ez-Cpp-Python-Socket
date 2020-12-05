@@ -55,15 +55,10 @@ class EzPySocket:
             and ensure that the right message is passed through.]. Defaults to ["", ""].
         """
         self.__debug = debug
-
         self.__socket_family = socket_family
-
         self.__socket_type = socket_type
-
         self.__reconnect_on_address_busy = reconnect_on_address_busy
-
         self.__tokens = tokens
-
         self.__auto_connect = auto_connect
 
         self.create_socket()
@@ -79,6 +74,9 @@ class EzPySocket:
         if server_mode:
             while not address_free_flag:
                 try:
+                    # To disable lingering consequences immediately after closing connection
+                    self.__sock.setsockopt(
+                        socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     self.__sock.bind(self.__server_address)
                     address_free_flag = True
                 except OSError as oserr:
@@ -139,6 +137,16 @@ class EzPySocket:
         except socket.error as err:
             print("Socket creation failed : ", err)
 
+        # TODO: Keep alive flag for client?
+        # # Check and turn on TCP Keepalive
+        # ret = self.__sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+        # if(ret == 0):
+        #     print('Socket Keepalive off, turning on')
+        #     x = self.__sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        #     print('setsockopt=', x)
+        # else:
+        #     print('Socket Keepalive already on')
+
     def connect(self):
         """[summary]
         Call this to verify client side connection with server.
@@ -147,7 +155,6 @@ class EzPySocket:
         """
         # Wait for a connection
         print('Waiting for a connection ...')
-
         # (Blocking) Extract first connection request and connect
         self.__connection, self.__client_address = self.__sock.accept()
 
@@ -159,6 +166,8 @@ class EzPySocket:
         """
         try:
             self.__connection.close()
+            self.__sock.shutdown(socket.SHUT_RDWR)
+            self.__sock.close()
         except:
             print("Connection already closed successfully")
 
@@ -244,7 +253,7 @@ class EzPySocket:
         self.__loop_start_time = time.time()
         decorated_func = self.loop_func_decorator(func)
         if loop_count == 0:
-            # Server is up until Client has gotten its request
+            # Client is up until Server has gotten its request
             status = "Active"
             while status != "Stop":
                 decorated_func(self, data, show_ips)
@@ -350,7 +359,7 @@ class EzPySocket:
                         " Please check if the right kind of data is being sent/received or that",
                         " the same tokens are set on server and client ends...",
                         "\nAdditionally, try increasing set_sleep_between_packets value.",
-                        "Current sleep_between_packets value: " + str(self.get_sleep_between_packets()) )
+                        "Current sleep_between_packets value: " + str(self.get_sleep_between_packets()))
                     raise Exception(
                         "Ending token check in received message failed")
                 else:

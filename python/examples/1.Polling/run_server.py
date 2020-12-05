@@ -7,9 +7,6 @@ if __name__ == "__main__":
     # Init
     s = ps.EzPySocket(reconnect_on_address_busy=5.0)
 
-    # Load image
-    img = cv2.imread("lena.jpg", 1)
-
 # Receive examples
     print("Receiving data...")
 

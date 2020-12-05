@@ -52,10 +52,9 @@ EzCppSocket::EzCppSocket(std::string server_address,
 		{
 			int opt = 1;
 			int addrlen = sizeof(this->serv_addr);
-			int server_fd;
 
 			// Creating socket file descriptor
-			if ((server_fd = socket(this->socket_family, this->socket_type, 0)) == 0)
+			if ((this->fd = socket(this->socket_family, this->socket_type, 0)) == 0)
 			{
 				perror("Socket creation failed");
 				exit(EXIT_FAILURE);
@@ -64,7 +63,7 @@ EzCppSocket::EzCppSocket(std::string server_address,
 				printf("Socket creation successful\n");
 
 			// Forcefully attaching socket to the port
-			if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
+			if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
 						   &opt, sizeof(opt)))
 			{
 				perror("Setsockopt failed");
@@ -76,7 +75,7 @@ EzCppSocket::EzCppSocket(std::string server_address,
 			while (!address_free_flag)
 			{
 				// Forcefully attaching socket to the specified port
-				if (bind(server_fd, (struct sockaddr *)&this->serv_addr,
+				if (bind(this->fd, (struct sockaddr *)&this->serv_addr,
 						 sizeof(this->serv_addr)) < 0)
 				{
 					printf("\nServer Binding to Address Failed...\n");
@@ -91,14 +90,14 @@ EzCppSocket::EzCppSocket(std::string server_address,
 					address_free_flag = true;
 			}
 
-			if (listen(server_fd, 1) < 0) // queue of pending connections -> 1
+			if (listen(this->fd, 1) < 0) // queue of pending connections -> 1
 			{
 				perror("listen");
 				exit(EXIT_FAILURE);
 			}
 
 			printf("Waiting for a connection ...\n");
-			if ((sock = accept(server_fd, (struct sockaddr *)&this->serv_addr,
+			if ((this->sock = accept(this->fd, (struct sockaddr *)&this->serv_addr,
 							   (socklen_t *)&addrlen)) < 0)
 			{
 				perror("accept");
@@ -110,7 +109,7 @@ EzCppSocket::EzCppSocket(std::string server_address,
 		}
 		else
 		{
-			if ((sock = socket(this->socket_family, this->socket_type, 0)) < 0)
+			if ((this->sock = socket(this->socket_family, this->socket_type, 0)) < 0)
 				printf("Socket creation error\n");
 			else
 				printf("Socket creation successful\n");
@@ -122,7 +121,9 @@ EzCppSocket::EzCppSocket(std::string server_address,
  * @brief Destroy the Py C Client object
  * 
  */
-EzCppSocket::~EzCppSocket(){};
+EzCppSocket::~EzCppSocket(){
+	this->Disconnect();
+};
 
 /**
  * @brief Connect to the socket explicitly
@@ -132,7 +133,7 @@ EzCppSocket::~EzCppSocket(){};
 void EzCppSocket::establishConnect()
 {
 	bool address_free_flag = false;
-	while (!address_free_flag) // TODO: Timeout and check again
+	while (!address_free_flag)
 	{
 		std::cout << "Client is waiting to connect to server...\n";
 		if (connect(this->sock, (struct sockaddr *)&this->serv_addr, sizeof(this->serv_addr)) < 0)
@@ -174,7 +175,9 @@ void EzCppSocket::pollingTimeout()
  */
 void EzCppSocket::Disconnect()
 {
-	close(sock);
+	close(this->fd);
+	shutdown(this->sock, SHUT_RDWR);
+	close(this->sock);
 }
 
 /**
@@ -453,7 +456,7 @@ int EzCppSocket::readInt(const int buffer_size)
 
 	if (this->debug)
 	{
-		printf("readInt buffer received: %s\n", buffer);
+		printf("readInt buffer received: '%s' \n", buffer);
 		printf("Converted int : %i\n", std::stoi(str));
 	}
 

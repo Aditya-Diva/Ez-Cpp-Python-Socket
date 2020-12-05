@@ -9,7 +9,7 @@ setuptools.setup(
     version=__version__,
     author="Aditya Divakaran",
     author_email="adi.develops@gmail.com",
-    description="Cpp Python socket abstraction library that attempts to simplify TCP/IP socket communication.",
+    description="Cpp Python Socket Abstraction Library that attempts to simplify TCP/IP socket communication",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Aditya-Diva/Ez-Cpp-Python-Socket",

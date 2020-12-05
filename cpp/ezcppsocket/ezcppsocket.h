@@ -29,7 +29,8 @@
 class EzCppSocket
 {
 private:
-	int sock;									// Socket point
+	int sock;									// Socket point 
+	int fd;										// File descriptor (Server)
 	std::string server_address;					// Server address
 	int server_port;							// Port number
 	int socket_family;							// IPV4/IPV6
